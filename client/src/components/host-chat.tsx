@@ -11,7 +11,18 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useMessageReads } from "@/hooks/useMessageReads";
-import type { Host, Message } from "@shared/schema";
+import type { Host } from "@shared/schema";
+
+interface Message {
+  id: number;
+  content: string;
+  userId: string;
+  conversationId: number;
+  createdAt: string;
+  userEmail?: string;
+  userFirstName?: string;
+  userLastName?: string;
+}
 
 interface HostWithContacts extends Host {
   contacts: any[];
@@ -52,7 +63,7 @@ export default function HostChat() {
 
   const canDeleteMessage = (message: Message) => {
     const currentUser = user as any;
-    const isOwner = message.sender === getUserName();
+    const isOwner = `${message.userFirstName || ''} ${message.userLastName || ''}`.trim() === getUserName();
     const isSuperAdmin = currentUser?.role === "super_admin";
     const isAdmin = currentUser?.role === "admin";
     const hasModeratePermission = currentUser?.permissions?.includes("moderate_messages");
@@ -82,16 +93,21 @@ export default function HostChat() {
   // Fetch messages for host conversation
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messaging/conversations", hostConversation?.id, "messages"],
+    queryFn: async () => {
+      if (!hostConversation) return [];
+      const response = await apiRequest('GET', `/api/messaging/conversations/${hostConversation.id}/messages`);
+      return await response.json();
+    },
     enabled: !!hostConversation,
     refetchInterval: 3000,
   });
 
   // Auto-mark messages as read when viewing host chat
-  useAutoMarkAsRead(
-    selectedHost ? `host-${selectedHost.id}` : "", 
-    messages, 
-    !!selectedHost
-  );
+  // useAutoMarkAsRead(
+  //   selectedHost ? `host-${selectedHost.id}` : "", 
+  //   messages, 
+  //   !!selectedHost
+  // );
 
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { content: string }) => {
@@ -236,15 +252,15 @@ export default function HostChat() {
               <div key={message.id} className="flex space-x-3 group">
                 <Avatar className="w-8 h-8">
                   <AvatarFallback className="bg-gray-500 text-white text-xs">
-                    {message.sender?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'TM'}
+                    {`${message.userFirstName || ''} ${message.userLastName || ''}`.trim() || message.userEmail || 'TM'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center space-x-2">
-                      <span className="font-medium text-sm">{message.sender}</span>
+                      <span className="font-medium text-sm">{`${message.userFirstName || ''} ${message.userLastName || ''}`.trim() || message.userEmail || 'Team Member'}</span>
                       <span className="text-xs text-gray-500">
-                        {new Date(message.timestamp).toLocaleTimeString()}
+                        {new Date(message.createdAt).toLocaleTimeString()}
                       </span>
                     </div>
                     {/* Show delete button for message owners or super admins */}

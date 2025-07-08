@@ -50,6 +50,11 @@ export function setupFreshMessagingRoutes(app: Express) {
   // Get messages for a conversation (simplified)
   app.get("/api/messaging/conversations/:id/messages", isAuthenticated, async (req, res) => {
     try {
+      // Disable caching for development
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      
       const conversationId = parseInt(req.params.id);
       const userId = req.user.id;
       
@@ -72,7 +77,15 @@ export function setupFreshMessagingRoutes(app: Express) {
         .orderBy(messages.createdAt);
 
       console.log(`💬 Found ${conversationMessages.length} messages`);
-      res.json(conversationMessages);
+      if (conversationMessages.length > 0) {
+        console.log(`💬 Sample message:`, JSON.stringify(conversationMessages[0], null, 2));
+      }
+      // Add timestamp to prevent caching issues during development
+      const messagesWithTimestamp = conversationMessages.map(msg => ({
+        ...msg,
+        _debug_timestamp: new Date().toISOString()
+      }));
+      res.json(messagesWithTimestamp);
     } catch (error) {
       console.error("❌ Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });

@@ -247,10 +247,7 @@ export default function GeneralChat() {
                           {showAvatar && (
                             <div className="flex items-baseline gap-2 mb-1">
                               <span className="font-medium text-sm">
-                                {message.userFirstName || message.userLastName ? 
-                                  `${message.userFirstName || ''} ${message.userLastName || ''}`.trim() :
-                                  message.userEmail || 'Unknown User'
-                                }
+                                {`${message.userFirstName || ''} ${message.userLastName || ''}`.trim() || message.userEmail || 'Unknown User'}
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 {formatTime(message.createdAt)}
