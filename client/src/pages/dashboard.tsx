@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProjectList from "@/components/project-list";
 import WeeklySandwichForm from "@/components/weekly-sandwich-form";
 import ChatHub from "@/components/chat-hub";
-import CommitteeChat from "@/components/committee-chat";
+import CommitteeMessaging from "@/components/committee-messaging";
 import GoogleDriveLinks from "@/components/google-drive-links";
 import DashboardOverview from "@/components/dashboard-overview";
 import SandwichCollectionLog from "@/components/sandwich-collection-log";
@@ -282,7 +282,7 @@ export default function Dashboard() {
                 <p className="text-gray-600 dark:text-gray-300">Internal committee discussions and collaboration</p>
               </div>
             </div>
-            <CommitteeChat />
+            <CommitteeMessaging />
           </div>
         );
       case "user-management":

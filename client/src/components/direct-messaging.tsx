@@ -15,10 +15,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface Message {
   id: number;
-  userId: string;
+  userId: number;
   content: string;
   createdAt: string;
   conversationId: number;
+  userEmail?: string;
+  userFirstName?: string;
+  userLastName?: string;
 }
 
 interface User {
@@ -54,7 +57,7 @@ export default function DirectMessaging() {
 
   // Fetch user's conversations
   const { data: conversations = [] } = useQuery<Conversation[]>({
-    queryKey: ["/api/conversations"],
+    queryKey: ["/api/messaging/conversations"],
     enabled: !!user,
   });
 
@@ -77,17 +80,18 @@ export default function DirectMessaging() {
         // Create new conversation
         try {
           console.log('Creating conversation with user:', (user as any)?.id, 'for selected user:', selectedUser.id);
-          const response = await apiRequest('POST', '/api/conversations', {
+          const response = await apiRequest('POST', '/api/messaging/conversations', {
             type: "direct",
             name: conversationName,
             participants: [(user as any).id, selectedUser.id]
           });
           const newConversation = await response.json();
           setCurrentConversation(newConversation);
-          queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/messaging/conversations"] });
         } catch (error) {
           console.error('Failed to create conversation:', error);
-          if (error.message.includes('401')) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          if (errorMessage.includes('401')) {
             toast({ title: "Authentication error - please refresh the page", variant: "destructive" });
           } else {
             toast({ title: "Failed to create conversation", variant: "destructive" });
@@ -105,10 +109,10 @@ export default function DirectMessaging() {
 
   // Fetch messages for current conversation
   const { data: messages = [] } = useQuery<Message[]>({
-    queryKey: ["/api/conversations", currentConversation?.id, "messages"],
+    queryKey: ["/api/messaging/conversations", currentConversation?.id, "messages"],
     queryFn: async () => {
       if (!currentConversation) return [];
-      const response = await apiRequest("GET", `/api/conversations/${currentConversation.id}/messages`);
+      const response = await apiRequest("GET", `/api/messaging/conversations/${currentConversation.id}/messages`);
       return await response.json();
     },
     enabled: !!currentConversation,
@@ -119,13 +123,13 @@ export default function DirectMessaging() {
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!currentConversation) throw new Error("No conversation selected");
-      const response = await apiRequest("POST", `/api/conversations/${currentConversation.id}/messages`, {
+      const response = await apiRequest("POST", `/api/messaging/conversations/${currentConversation.id}/messages`, {
         content
       });
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation?.id, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messaging/conversations", currentConversation?.id, "messages"] });
       setMessage("");
     },
     onError: () => {
@@ -141,7 +145,7 @@ export default function DirectMessaging() {
     },
     onSuccess: () => {
       if (currentConversation) {
-        queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation.id, "messages"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/messaging/conversations", currentConversation.id, "messages"] });
       }
       setEditingMessage(null);
       setEditedContent("");
@@ -160,7 +164,7 @@ export default function DirectMessaging() {
     },
     onSuccess: () => {
       if (currentConversation) {
-        queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation.id, "messages"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/messaging/conversations", currentConversation.id, "messages"] });
       }
       toast({ title: "Message deleted successfully" });
     },

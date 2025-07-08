@@ -15,8 +15,12 @@ interface Message {
   id: number;
   content: string;
   senderId: string;
+  userId: number;
   conversationId: number;
   createdAt: string;
+  userEmail?: string;
+  userFirstName?: string;
+  userLastName?: string;
   sender?: {
     firstName: string;
     lastName: string;
@@ -38,52 +42,60 @@ export default function GeneralChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [newMessage, setNewMessage] = useState("");
 
-  // Get or create the general conversation
+  // Test new messaging system
+  const { data: testData } = useQuery({
+    queryKey: ["/api/messaging/test"],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/messaging/test');
+      return response.json();
+    }
+  });
+
+  // Get or create the general conversation using fresh API
   const { data: generalConversation, isLoading: conversationLoading } = useQuery({
-    queryKey: ["/api/conversations/general"],
+    queryKey: ["/api/messaging/conversations/general"],
     queryFn: async () => {
       // First try to find existing general conversation
-      const conversationsResponse = await apiRequest('GET', '/api/conversations');
+      const conversationsResponse = await apiRequest('GET', '/api/messaging/conversations');
       const conversations = await conversationsResponse.json() as Conversation[];
-      console.log("Found conversations:", conversations);
+      console.log("🔍 Found conversations:", conversations);
       const existingConversation = conversations.find((conv: Conversation) => 
-        conv.name === "General Chat" && conv.type === "general"
+        conv.name === "General Chat"
       );
 
       if (existingConversation) {
-        console.log("Found existing general conversation:", existingConversation);
+        console.log("✅ Found existing general conversation:", existingConversation);
         return existingConversation;
       }
 
       // Create new general conversation if not found
-      console.log("Creating new general conversation");
-      const response = await apiRequest('POST', '/api/conversations', {
+      console.log("🆕 Creating new general conversation");
+      const response = await apiRequest('POST', '/api/messaging/conversations', {
         name: "General Chat",
-        type: "general",
-        participantIds: [(user as any)?.id] // Start with current user, others will join automatically
+        type: "general"
       });
       return await response.json() as Conversation;
     },
     enabled: !!user
   });
 
-  // Fetch messages for the general conversation
+  // Fetch messages for the general conversation using fresh API
   const { data: messages = [], isLoading: messagesLoading } = useQuery({
-    queryKey: ["/api/conversations", generalConversation?.id, "messages"],
+    queryKey: ["/api/messaging/conversations", generalConversation?.id, "messages"],
     queryFn: async () => {
       if (!generalConversation) return [];
-      const response = await apiRequest('GET', `/api/conversations/${generalConversation.id}/messages`);
+      const response = await apiRequest('GET', `/api/messaging/conversations/${generalConversation.id}/messages`);
       return await response.json() as Message[];
     },
     enabled: !!generalConversation,
     refetchInterval: 5000 // Refresh every 5 seconds for real-time feel
   });
 
-  // Send message mutation
+  // Send message mutation using fresh API
   const sendMessageMutation = useMutation({
     mutationFn: async (messageContent: string) => {
       if (!generalConversation) throw new Error("No conversation available");
-      const response = await apiRequest('POST', `/api/conversations/${generalConversation.id}/messages`, {
+      const response = await apiRequest('POST', `/api/messaging/conversations/${generalConversation.id}/messages`, {
         content: messageContent
       });
       return await response.json();
@@ -91,7 +103,7 @@ export default function GeneralChat() {
     onSuccess: () => {
       setNewMessage("");
       queryClient.invalidateQueries({ 
-        queryKey: ["/api/conversations", generalConversation?.id, "messages"] 
+        queryKey: ["/api/messaging/conversations", generalConversation?.id, "messages"] 
       });
       // Scroll to bottom after sending
       setTimeout(() => scrollToBottom(), 100);
@@ -175,6 +187,12 @@ export default function GeneralChat() {
         <p className="text-sm text-muted-foreground">
           Open discussion for all team members
         </p>
+        {/* Debug info */}
+        {testData && (
+          <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+            🧪 Fresh Messaging: {testData.status} - User: {testData.user}
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col p-0">
@@ -229,10 +247,9 @@ export default function GeneralChat() {
                           {showAvatar && (
                             <div className="flex items-baseline gap-2 mb-1">
                               <span className="font-medium text-sm">
-                                {message.sender ? 
-                                  `${message.sender.firstName || ''} ${message.sender.lastName || ''}`.trim() ||
-                                  message.sender.email :
-                                  'Unknown User'
+                                {message.userFirstName || message.userLastName ? 
+                                  `${message.userFirstName || ''} ${message.userLastName || ''}`.trim() :
+                                  message.userEmail || 'Unknown User'
                                 }
                               </span>
                               <span className="text-xs text-muted-foreground">

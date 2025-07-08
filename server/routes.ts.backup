@@ -17,7 +17,8 @@ import { storage } from "./storage-wrapper";
 import { sendDriverAgreementNotification } from "./sendgrid";
 import { messageNotificationRoutes } from "./routes/message-notifications";
 import googleSheetsRoutes from "./routes/google-sheets";
-import { setupCleanMessagingRoutes } from "./routes/clean-messaging";
+// import { setupCleanMessagingRoutes } from "./routes/clean-messaging";
+import { setupFreshMessagingRoutes } from "./routes/fresh-messaging";
 // import { generalRateLimit, strictRateLimit, uploadRateLimit, clearRateLimit } from "./middleware/rateLimiter";
 import { sanitizeMiddleware } from "./middleware/sanitizer";
 import { requestLogger, errorLogger, logger } from "./middleware/logger";
@@ -127,7 +128,7 @@ const upload = multer({
   dest: "uploads/",
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === "text/csv" || file.originalname.endsWith(".csv")) {
+    if (file.mimetype === "text/csv" || file.originalname.toLowerCase().endsWith('.csv')) {
       cb(null, true);
     } else {
       cb(new Error("Only CSV files are allowed"));
@@ -250,6 +251,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         httpOnly: true, // Prevent XSS attacks
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for better persistence
         sameSite: "lax", // CSRF protection
+        domain: undefined, // Let the browser handle domain for localhost
+        path: "/", // Make cookie available to all paths
       },
       name: "tsp.session", // Custom session name
     }),
@@ -955,11 +958,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Simple conversation API endpoints for the new 3-table messaging system
-  app.get("/api/conversations", isAuthenticated, async (req, res) => {
+  // Message unread counts endpoint
+  app.get("/api/messages/unread-counts", isAuthenticated, async (req, res) => {
     try {
       const user = (req as any).user;
       if (!user?.id) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // For now, return empty counts - you can implement actual counting logic later
+      const unreadCounts = {
+        general: 0,
+        committee: 0,
+        hosts: 0,
+        drivers: 0,
+        recipients: 0,
+        core_team: 0,
+        direct: 0,
+        groups: 0,
+        total: 0
+      };
+
+      res.json(unreadCounts);
+    } catch (error) {
+      console.error("Error fetching unread counts:", error);
+      res.status(500).json({ message: "Failed to fetch unread counts" });
+    }
+  });
+
+  // Mark all messages as read endpoint
+  app.post("/api/messages/mark-all-read", isAuthenticated, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.id) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Implementation would go here
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      res.status(500).json({ message: "Failed to mark messages as read" });
+    }
+  });
+
+  // COMMENTED OUT OLD CONVERSATION ROUTES - STARTING FRESH
+  /* 
+  // Simple conversation API endpoints for the new 3-table messaging system
+  app.get("/api/conversations", isAuthenticated, async (req, res) => {
+    console.log("=== /api/conversations REQUEST ===");
+    console.log("Headers:", req.headers);
+    console.log("Session ID:", req.sessionID);
+    console.log("Session data:", req.session);
+    console.log("User from req:", (req as any).user);
+    
+    try {
+      const user = (req as any).user;
+      if (!user?.id) {
+        console.log("No user ID found, returning 401");
         return res.status(401).json({ message: "Unauthorized" });
       }
 
@@ -1052,12 +1108,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(conversations)
           .where(eq(conversations.id, conversationId));
 
+        console.log(`🔍 [MAIN ROUTES] Conversation ${conversationId}:`, conversation);
+
         if (!conversation) {
           return res.status(404).json({ message: "Conversation not found" });
         }
 
         // Channel conversations are accessible to all users
         if (conversation.type !== "channel") {
+          console.log(`🔍 [MAIN ROUTES] Non-channel conversation, checking participants for user ${user.id}`);
           const [participant] = await db
             .select()
             .from(conversationParticipants)
@@ -1069,8 +1128,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
 
           if (!participant) {
+            console.log(`❌ [MAIN ROUTES] User ${user.id} not found as participant`);
             return res.status(403).json({ message: "Access denied" });
           }
+        } else {
+          console.log(`✅ [MAIN ROUTES] Channel conversation - allowing access for user ${user.id}`);
         }
 
         const conversationMessages = await db
@@ -1081,7 +1143,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sender: messagesTable.sender,
             createdAt: messagesTable.createdAt,
             updatedAt: messagesTable.updatedAt,
-            timestamp: messagesTable.timestamp,
             // Include user data for proper display
             userFirstName: users.firstName,
             userLastName: users.lastName,
@@ -1110,7 +1171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             msg.userFirstName ||
             msg.userEmail?.split("@")[0] ||
             "Unknown User",
-          timestamp: msg.timestamp || msg.createdAt,
+          timestamp: msg.createdAt,
           committee: "conversation",
         }));
 
@@ -1293,10 +1354,273 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  */
+  // END COMMENTED OUT OLD CONVERSATION ROUTES
 
-  // Make broadcast functions available globally for use in other routes
+  // CSV Import for Sandwich Collections
+  app.post(
+    "/api/import-collections",
+    upload.single("csvFile"),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "No CSV file uploaded" });
+        }
+
+        const csvContent = await fs.readFile(req.file.path, "utf-8");
+        logger.info(`CSV content preview: ${csvContent.substring(0, 200)}...`);
+
+        // Parse CSV with enhanced error handling for nested JSON
+        let records = [];
+        try {
+          records = parse(csvContent, {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+            delimiter: ",",
+            quote: '"',
+            escape: '"',
+            relax_quotes: true, // Allow unescaped quotes
+            relax_column_count: true, // Allow varying column counts
+          });
+        } catch (parseError) {
+          logger.warn("Standard parsing failed, trying manual parsing", { error: parseError });
+          // Fall back to manual parsing for complex cases with nested JSON
+          records = parseCSVManually(csvContent);
+        }
+
+        logger.info(`Parsed ${records.length} records`);
+        if (records.length > 0) {
+          logger.info(`First record keys: ${Object.keys(records[0]).join(', ')}`);
+        }
+
+        let successCount = 0;
+        let errorCount = 0;
+        const errors: string[] = [];
+
+        // Process each record
+        for (let i = 0; i < records.length; i++) {
+          const record = records[i];
+
+          try {
+            // Check for alternative column names
+            const hostName =
+              record["Host Name"] ||
+              record["Host"] ||
+              record["host_name"] ||
+              record["HostName"];
+            const sandwichCountStr =
+              record["Individual Sandwiches"] ||
+              record["Sandwich Count"] ||
+              record["Count"] ||
+              record["sandwich_count"] ||
+              record["SandwichCount"] ||
+              record["Sandwiches"];
+            const date =
+              record["Collection Date"] ||
+              record["Date"] ||
+              record["date"] ||
+              record["CollectionDate"];
+
+            // Validate required fields
+            if (!hostName) {
+              const availableKeys = Object.keys(record).join(", ");
+              throw new Error(
+                `Missing Host Name (available columns: ${availableKeys}) in row ${i + 1}`,
+              );
+            }
+            if (!sandwichCountStr) {
+              const availableKeys = Object.keys(record).join(", ");
+              throw new Error(
+                `Missing Individual Sandwiches (available columns: ${availableKeys}) in row ${i + 1}`,
+              );
+            }
+            if (!date) {
+              const availableKeys = Object.keys(record).join(", ");
+              throw new Error(
+                `Missing Collection Date (available columns: ${availableKeys}) in row ${i + 1}`,
+              );
+            }
+
+            // Parse sandwich count as integer
+            const sandwichCount = parseInt(sandwichCountStr.toString().trim());
+            if (isNaN(sandwichCount)) {
+              throw new Error(
+                `Invalid sandwich count "${sandwichCountStr}" in row ${i + 1}`,
+              );
+            }
+
+            // Parse dates
+            let collectionDate = date;
+            let submittedAt = new Date();
+
+            // Try to parse Submitted At if provided
+            const submittedAtStr =
+              record["Submitted At"] ||
+              record["Created At"] ||
+              record["created_at"] ||
+              record["CreatedAt"];
+            if (submittedAtStr) {
+              const parsedDate = new Date(submittedAtStr);
+              if (!isNaN(parsedDate.getTime())) {
+                submittedAt = parsedDate;
+              }
+            }
+
+            // Handle Group Collections data - preserve JSON structure if present
+            const groupCollectionsStr = record["Group Collections"] || "";
+            let groupCollections = "[]";
+            if (groupCollectionsStr && groupCollectionsStr.trim() !== "") {
+              try {
+                // Try to parse as JSON first
+                JSON.parse(groupCollectionsStr);
+                groupCollections = groupCollectionsStr;
+              } catch {
+                // If not JSON, check if it's a number
+                const groupCount = parseInt(groupCollectionsStr.trim());
+                if (!isNaN(groupCount) && groupCount > 0) {
+                  groupCollections = JSON.stringify([
+                    { count: groupCount, description: "Group Collection" },
+                  ]);
+                }
+              }
+            }
+
+            // Create sandwich collection
+            await storage.createSandwichCollection({
+              hostName: hostName.trim(),
+              individualSandwiches: sandwichCount,
+              collectionDate: collectionDate.trim(),
+              groupCollections: groupCollections,
+              submittedAt: submittedAt,
+            });
+
+            successCount++;
+          } catch (error) {
+            errorCount++;
+            const errorMsg = `Row ${i + 1}: ${error instanceof Error ? error.message : "Unknown error"}`;
+            errors.push(errorMsg);
+            logger.error(errorMsg);
+          }
+        }
+
+        // Clean up uploaded file
+        await fs.unlink(req.file.path);
+
+        const result = {
+          totalRecords: records.length,
+          successCount,
+          errorCount,
+          errors: errors.slice(0, 10), // Return first 10 errors
+        };
+
+        logger.info(`CSV import completed: ${successCount}/${records.length} successful`);
+        res.json(result);
+      } catch (error) {
+        logger.error("CSV import failed:", error);
+        res.status(500).json({
+          message: "CSV import failed",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    },
+  );
+
+  // Return the HTTP server
+  const httpServer = createServer(app);
+
+  // Initialize WebSocket server
+  const wss = new WebSocketServer({ 
+    server: httpServer,
+    path: '/notifications'
+  });
+
+  // Store connected clients with their user information
+  const clients = new Map<string, WebSocket>();
+
+  wss.on('connection', (ws: WebSocket) => {
+    console.log('New WebSocket connection established');
+    
+    ws.on('message', (message: string) => {
+      try {
+        const data = JSON.parse(message.toString());
+        
+        if (data.type === 'identify') {
+          // Store client connection with user ID
+          const userId = data.userId;
+          if (userId) {
+            clients.set(userId, ws);
+            console.log(`WebSocket client identified: userId=${userId}`);
+          }
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+
+    ws.on('close', () => {
+      // Remove client from map
+      clients.forEach((client, userId) => {
+        if (client === ws) {
+          clients.delete(userId);
+          console.log(`WebSocket client disconnected: userId=${userId}`);
+        }
+      })
+    });
+
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+    });
+  });
+
+  // Define broadcast functions
+  const broadcastNewMessage = async (message: any) => {
+    console.log('Broadcasting new message:', message);
+    
+    // Send to all connected clients
+    clients.forEach((client, userId) => {
+      if (client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(JSON.stringify({
+            type: 'new_message',
+            message: message,
+            timestamp: new Date().toISOString()
+          }));
+        } catch (error) {
+          console.error(`Failed to send message to user ${userId}:`, error);
+        }
+      }
+    })
+  };
+
+  const broadcastTaskAssignment = async (task: any) => {
+    console.log('Broadcasting task assignment:', task);
+    
+    // Send to specific assigned users
+    if (task.assignedTo && Array.isArray(task.assignedTo)) {
+      for (const userId of task.assignedTo) {
+        const client = clients.get(userId.toString());
+        if (client && client.readyState === WebSocket.OPEN) {
+          try {
+            client.send(JSON.stringify({
+              type: 'task_assigned',
+              task: task,
+              timestamp: new Date().toISOString()
+            }));
+          } catch (error) {
+            console.error(`Failed to send task to user ${userId}:`, error);
+          }
+        }
+      }
+    }
+  };
+
+  // Make broadcast functions globally available
   (global as any).broadcastNewMessage = broadcastNewMessage;
   (global as any).broadcastTaskAssignment = broadcastTaskAssignment;
+
+  // Setup fresh messaging routes
+  setupFreshMessagingRoutes(app);
 
   return httpServer;
 }

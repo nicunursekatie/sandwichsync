@@ -11,13 +11,19 @@ import { useMessageReads } from "@/hooks/useMessageReads";
 
 interface Message {
   id: number;
-  sender: string;
   content: string;
-  timestamp: Date;
-  committee: string;
-  parentId: number | null;
-  threadId: number | null;
-  replyCount: number;
+  userId: number;
+  conversationId: number;
+  createdAt: string;
+  userEmail?: string;
+  userFirstName?: string;
+  userLastName?: string;
+  sender?: string;
+  timestamp?: Date;
+  committee?: string;
+  parentId?: number | null;
+  threadId?: number | null;
+  replyCount?: number;
 }
 
 const committees = [

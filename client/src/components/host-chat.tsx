@@ -66,22 +66,22 @@ export default function HostChat() {
 
   // Get or create host conversation
   const { data: hostConversation } = useQuery({
-    queryKey: ["/api/conversations/host", selectedHost?.id],
+    queryKey: ["/api/messaging/conversations/host", selectedHost?.id],
     queryFn: async () => {
       if (!selectedHost) return null;
-      const response = await apiRequest('POST', '/api/conversations', {
+      const response = await apiRequest('POST', '/api/messaging/conversations', {
         type: 'host',
         name: `${selectedHost.name} Host Chat`,
         metadata: { hostId: selectedHost.id }
       });
-      return response;
+      return await response.json();
     },
     enabled: !!selectedHost,
   });
 
   // Fetch messages for host conversation
   const { data: messages = [] } = useQuery<Message[]>({
-    queryKey: ["/api/conversations", hostConversation?.id, "messages"],
+    queryKey: ["/api/messaging/conversations", hostConversation?.id, "messages"],
     enabled: !!hostConversation,
     refetchInterval: 3000,
   });
@@ -96,12 +96,12 @@ export default function HostChat() {
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { content: string }) => {
       if (!hostConversation) throw new Error("No conversation available");
-      return await apiRequest('POST', `/api/conversations/${hostConversation.id}/messages`, {
+      return await apiRequest('POST', `/api/messaging/conversations/${hostConversation.id}/messages`, {
         content: data.content
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", hostConversation?.id, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messaging/conversations", hostConversation?.id, "messages"] });
       setNewMessage("");
     },
     onError: () => {

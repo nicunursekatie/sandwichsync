@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import MessageLog from "@/components/message-log";
-import CommitteeChat from "@/components/committee-chat";
-import HostChat from "@/components/host-chat";
+import CommitteeMessaging from "@/components/committee-messaging";
 import CommitteeMessageLog from "@/components/committee-message-log";
+import HostChat from "@/components/host-chat";
 import CoreTeamChat from "@/components/core-team-chat";
 import GeneralChat from "@/components/general-chat";
 import { GroupMessaging } from "@/components/group-messaging";
@@ -62,7 +62,7 @@ export default function ChatHub() {
       label: "Committee Chat", 
       description: "Specific committee discussions",
       icon: <Users className="h-4 w-4" />,
-      component: <CommitteeChat />,
+      component: <CommitteeMessaging />,
       color: "bg-primary/10 text-primary"
     });
   }

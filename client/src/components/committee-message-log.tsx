@@ -8,7 +8,17 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useMessageReads } from "@/hooks/useMessageReads";
-import type { Message } from "@shared/schema";
+
+interface ConversationMessage {
+  id: number;
+  content: string;
+  createdAt: string;
+  userId: string;
+  userEmail?: string;
+  userFirstName?: string;
+  userLastName?: string;
+  sender?: string;
+}
 
 interface CommitteeMessageLogProps {
   committee: string;
@@ -47,7 +57,7 @@ export default function CommitteeMessageLog({ committee }: CommitteeMessageLogPr
     return 'Team Member';
   };
 
-  const canDeleteMessage = (message: Message) => {
+  const canDeleteMessage = (message: ConversationMessage) => {
     const currentUser = user as any;
     const isOwner = message.sender === getUserName();
     const isSuperAdmin = currentUser?.role === "super_admin";
@@ -59,10 +69,11 @@ export default function CommitteeMessageLog({ committee }: CommitteeMessageLogPr
 
   // Get or create committee conversation
   const { data: committeeConversation } = useQuery({
-    queryKey: ["/api/conversations/committee", committee],
+    queryKey: ["/api/messaging/conversations/committee", committee],
     queryFn: async () => {
       // First try to find existing conversation
-      const conversations = await apiRequest('GET', '/api/conversations');
+      const conversationsResponse = await apiRequest('GET', '/api/messaging/conversations');
+      const conversations = await conversationsResponse.json();
       const existingConversation = conversations.find((conv: any) => 
         conv.type === 'channel' && 
         conv.name === `${committee.charAt(0).toUpperCase() + committee.slice(1)} Committee`
@@ -73,34 +84,35 @@ export default function CommitteeMessageLog({ committee }: CommitteeMessageLogPr
       }
       
       // Create new conversation if not found
-      const response = await apiRequest('POST', '/api/conversations', {
+      const response = await apiRequest('POST', '/api/messaging/conversations', {
         type: 'channel',
         name: `${committee.charAt(0).toUpperCase() + committee.slice(1)} Committee`
       });
-      return response;
+      return await response.json();
     },
     enabled: !!committee,
   });
 
   // Fetch messages for committee conversation
-  const { data: messages = [], error, isLoading } = useQuery<Message[]>({
-    queryKey: ["/api/conversations", committeeConversation?.id, "messages"],
+  const { data: messages = [], error, isLoading } = useQuery<ConversationMessage[]>({
+    queryKey: ["/api/messaging/conversations", committeeConversation?.id, "messages"],
     enabled: !!committeeConversation,
     refetchInterval: 3000,
   });
 
   // Auto-mark messages as read when viewing committee
-  useAutoMarkAsRead(committee, messages, !!committee);
+  // TODO: Update useAutoMarkAsRead to work with new message format
+  // useAutoMarkAsRead(committee, messages, !!committee);
 
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { content: string }) => {
       if (!committeeConversation) throw new Error("No conversation available");
-      return await apiRequest('POST', `/api/conversations/${committeeConversation.id}/messages`, {
+      return await apiRequest('POST', `/api/messaging/conversations/${committeeConversation.id}/messages`, {
         content: data.content
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", committeeConversation?.id, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messaging/conversations", committeeConversation?.id, "messages"] });
       setNewMessage("");
     },
     onError: () => {
@@ -117,7 +129,7 @@ export default function CommitteeMessageLog({ committee }: CommitteeMessageLogPr
       return await apiRequest('DELETE', `/api/messages/${messageId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", committeeConversation?.id, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messaging/conversations", committeeConversation?.id, "messages"] });
       toast({
         title: "Message deleted",
         description: "The message has been removed",
@@ -159,7 +171,7 @@ export default function CommitteeMessageLog({ committee }: CommitteeMessageLogPr
               <div key={message.id} className="flex space-x-3 group">
                 <Avatar className="w-8 h-8">
                   <AvatarFallback className="bg-gray-500 text-white text-xs">
-                    {message.sender?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'TM'}
+                    {message.sender?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || 'TM'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
@@ -167,7 +179,7 @@ export default function CommitteeMessageLog({ committee }: CommitteeMessageLogPr
                     <div className="flex items-center space-x-2">
                       <span className="font-medium text-sm">{message.sender}</span>
                       <span className="text-xs text-gray-500">
-                        {new Date(message.timestamp).toLocaleTimeString()}
+                        {message.createdAt ? new Date(message.createdAt).toLocaleTimeString() : ''}
                       </span>
                     </div>
                     {/* Show delete button for user's own messages or super admin */}
