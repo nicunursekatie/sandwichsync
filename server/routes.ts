@@ -18,6 +18,7 @@ import { sendDriverAgreementNotification } from "./sendgrid";
 import { messageNotificationRoutes } from "./routes/message-notifications";
 import googleSheetsRoutes from "./routes/google-sheets";
 import { setupFreshMessagingRoutes } from "./routes/fresh-messaging";
+import { hostsRoutes } from "./routes/hosts";
 // import { generalRateLimit, strictRateLimit, uploadRateLimit, clearRateLimit } from "./middleware/rateLimiter";
 import { sanitizeMiddleware } from "./middleware/sanitizer";
 import { requestLogger, errorLogger, logger } from "./middleware/logger";
@@ -272,6 +273,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import and register signup routes
   const { signupRoutes } = await import("./routes/signup");
   app.use("/api", signupRoutes);
+  
+  // Register hosts routes
+  app.use("/api", hostsRoutes);
 
   // Comprehensive debug endpoints for authentication troubleshooting
   app.get("/api/debug/session", async (req: any, res) => {
