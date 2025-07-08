@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,16 +14,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import Dashboard from "@/pages/dashboard";
 import Landing from "@/pages/landing";
 import SignupPage from "@/pages/signup";
+import { AuthPage } from "@/pages/auth";
 import NotFound from "@/pages/not-found";
-
-// Conditional auth imports
-const AuthProvider = import.meta.env.VITE_AUTH_MODE === 'supabase' 
-  ? React.lazy(() => import("@/contexts/AuthContext").then(m => ({ default: m.AuthProvider })))
-  : null;
-
-const AuthPage = import.meta.env.VITE_AUTH_MODE === 'supabase'
-  ? React.lazy(() => import("@/pages/auth").then(m => ({ default: m.AuthPage })))
-  : null;
 
 function Router() {
   const { isAuthenticated, isLoading, error } = useAuth();
@@ -51,21 +44,8 @@ function Router() {
     );
   }
 
-  // If not authenticated, show appropriate auth flow
+  // If not authenticated, show public routes
   if (!isAuthenticated) {
-    // For Supabase auth, show the auth page
-    if (import.meta.env.VITE_AUTH_MODE === 'supabase' && AuthPage) {
-      return (
-        <Switch>
-          <Route path="/signup" component={SignupPage} />
-          <Route path="/auth" component={AuthPage} />
-          <Route path="/" component={AuthPage} />
-          <Route component={AuthPage} />
-        </Switch>
-      );
-    }
-    
-    // For temp auth, show landing page
     return (
       <Switch>
         <Route path="/signup" component={SignupPage} />

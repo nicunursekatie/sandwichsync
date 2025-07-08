@@ -23,6 +23,7 @@ interface User {
   email: string;
   firstName: string;
   lastName: string;
+  displayName?: string;
   role: string;
   permissions: string[];
   isActive: boolean;
@@ -38,6 +39,9 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editingRole, setEditingRole] = useState<string>("");
   const [editingPermissions, setEditingPermissions] = useState<string[]>([]);
+  const [editingFirstName, setEditingFirstName] = useState<string>("");
+  const [editingLastName, setEditingLastName] = useState<string>("");
+  const [editingDisplayName, setEditingDisplayName] = useState<string>("");
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState<string>("");
 
@@ -64,10 +68,20 @@ export default function UserManagement() {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: async (data: { userId: string; role: string; permissions: string[] }) => {
+    mutationFn: async (data: { 
+      userId: string; 
+      role: string; 
+      permissions: string[];
+      firstName?: string;
+      lastName?: string;
+      displayName?: string;
+    }) => {
       return apiRequest("PATCH", `/api/users/${data.userId}`, {
         role: data.role,
         permissions: data.permissions,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        displayName: data.displayName,
       });
     },
     onSuccess: () => {
@@ -152,6 +166,9 @@ export default function UserManagement() {
     setSelectedUser(user);
     setEditingRole(user.role);
     setEditingPermissions(user.permissions || []);
+    setEditingFirstName(user.firstName || "");
+    setEditingLastName(user.lastName || "");
+    setEditingDisplayName(user.displayName || "");
   };
 
   const handleRoleChange = (role: string) => {
@@ -174,6 +191,9 @@ export default function UserManagement() {
       userId: selectedUser.id,
       role: editingRole,
       permissions: editingPermissions,
+      firstName: editingFirstName,
+      lastName: editingLastName,
+      displayName: editingDisplayName,
     });
   };
 
@@ -193,7 +213,7 @@ export default function UserManagement() {
     ];
     
     const randomAchievement = achievements[Math.floor(Math.random() * achievements.length)];
-    const congratsMessage = `${user.firstName} ${user.lastName} - ${randomAchievement}! From ${currentUser?.firstName || 'Admin'}`;
+    const congratsMessage = `${user.firstName} ${user.lastName} - ${randomAchievement}! From ${(currentUser as any)?.firstName || 'Admin'}`;
     
     triggerCelebration(congratsMessage);
     
@@ -368,15 +388,48 @@ export default function UserManagement() {
                             Edit
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Edit User Permissions</DialogTitle>
+                        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+                          <DialogHeader className="flex-shrink-0">
+                            <DialogTitle>Edit User Details</DialogTitle>
                             <DialogDescription>
-                              Modify role and permissions for {user.firstName} {user.lastName}
+                              Modify name, role and permissions for {user.firstName} {user.lastName}
                             </DialogDescription>
                           </DialogHeader>
                           
-                          <div className="space-y-6">
+                          <div className="flex-1 overflow-y-auto pr-2 min-h-0">
+                            <div className="space-y-6 pb-4">
+                            {/* Name Fields */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="firstName">First Name</Label>
+                                <Input
+                                  id="firstName"
+                                  value={editingFirstName}
+                                  onChange={(e) => setEditingFirstName(e.target.value)}
+                                  placeholder="Enter first name"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="lastName">Last Name</Label>
+                                <Input
+                                  id="lastName"
+                                  value={editingLastName}
+                                  onChange={(e) => setEditingLastName(e.target.value)}
+                                  placeholder="Enter last name"
+                                />
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <Label htmlFor="displayName">Display Name</Label>
+                              <Input
+                                id="displayName"
+                                value={editingDisplayName}
+                                onChange={(e) => setEditingDisplayName(e.target.value)}
+                                placeholder="How this user appears in messages and activities"
+                              />
+                            </div>
+
                             <div>
                               <Label htmlFor="role">Role</Label>
                               <Select
@@ -457,14 +510,16 @@ export default function UserManagement() {
                               </div>
                             </div>
 
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" onClick={() => setSelectedUser(null)}>
-                                Cancel
-                              </Button>
-                              <Button onClick={handleSaveChanges}>
-                                Save Changes
-                              </Button>
                             </div>
+                          </div>
+                          
+                          <div className="flex-shrink-0 flex justify-end gap-2 pt-4 border-t">
+                            <Button variant="outline" onClick={() => setSelectedUser(null)}>
+                              Cancel
+                            </Button>
+                            <Button onClick={handleSaveChanges}>
+                              Save Changes
+                            </Button>
                           </div>
                         </DialogContent>
                       </Dialog>

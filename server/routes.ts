@@ -393,8 +393,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const { id } = req.params;
-        const { role, permissions } = req.body;
-        const updatedUser = await storage.updateUser(id, { role, permissions });
+        const { role, permissions, firstName, lastName, displayName } = req.body;
+        
+        // Build updates object with only provided fields
+        const updates: any = {};
+        if (role !== undefined) updates.role = role;
+        if (permissions !== undefined) updates.permissions = permissions;
+        if (firstName !== undefined) updates.firstName = firstName;
+        if (lastName !== undefined) updates.lastName = lastName;
+        if (displayName !== undefined) updates.displayName = displayName;
+        
+        const updatedUser = await storage.updateUser(id, updates);
         res.json(updatedUser);
       } catch (error) {
         console.error("Error updating user:", error);
