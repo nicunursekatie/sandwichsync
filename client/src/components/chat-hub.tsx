@@ -7,6 +7,7 @@ import CommitteeChat from "@/components/committee-chat";
 import HostChat from "@/components/host-chat";
 import CommitteeMessageLog from "@/components/committee-message-log";
 import CoreTeamChat from "@/components/core-team-chat";
+import GeneralChat from "@/components/general-chat";
 import { GroupMessaging } from "@/components/group-messaging";
 import DirectMessaging from "@/components/direct-messaging";
 import { useAuth } from "@/hooks/useAuth";
@@ -50,7 +51,7 @@ export default function ChatHub() {
       label: "General Chat", 
       description: "Open discussion for all team members",
       icon: <MessageSquare className="h-4 w-4" />,
-      component: <CommitteeMessageLog committee="general" />,
+      component: <GeneralChat />,
       color: "bg-primary/10 text-primary"
     });
   }
@@ -100,7 +101,7 @@ export default function ChatHub() {
   }
 
   // Core team chat for admins only
-  if (hasPermission(user, PERMISSIONS.CORE_TEAM_CHAT)) {
+  if ((user as any)?.role === 'admin' || (user as any)?.role === 'super_admin') {
     availableChannels.push({ 
       value: "core_team", 
       label: "Core Team", 

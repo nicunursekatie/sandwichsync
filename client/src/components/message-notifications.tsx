@@ -65,8 +65,19 @@ export default function MessageNotifications({ user }: MessageNotificationsProps
     console.log('🔔 Setting up WebSocket for user:', (user as any)?.id);
     // Set up WebSocket connection for real-time notifications
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host.replace(':80', '').replace(':443', '')}/notifications`;
+    const hostname = window.location.hostname;
+    const port = window.location.port || (window.location.protocol === "https:" ? "443" : "80");
+    
+    // Construct WebSocket URL more carefully
+    let wsUrl;
+    if (port === "80" && protocol === "ws:" || port === "443" && protocol === "wss:") {
+      wsUrl = `${protocol}//${hostname}/notifications`;
+    } else {
+      wsUrl = `${protocol}//${hostname}:${port}/notifications`;
+    }
+    
     console.log('Connecting to WebSocket:', wsUrl);
+    console.log('Location details:', { hostname, port, protocol });
 
     try {
       const socket = new WebSocket(wsUrl);

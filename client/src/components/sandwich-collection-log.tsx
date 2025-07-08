@@ -144,13 +144,13 @@ export default function SandwichCollectionLog() {
         
         if (searchFilters.createdAtFrom) {
           filteredCollections = filteredCollections.filter((c: SandwichCollection) => 
-            c.submittedAt >= searchFilters.createdAtFrom
+            new Date(c.submittedAt) >= new Date(searchFilters.createdAtFrom)
           );
         }
         
         if (searchFilters.createdAtTo) {
           filteredCollections = filteredCollections.filter((c: SandwichCollection) => 
-            c.submittedAt <= searchFilters.createdAtTo
+            new Date(c.submittedAt) <= new Date(searchFilters.createdAtTo)
           );
         }
         
@@ -207,7 +207,7 @@ export default function SandwichCollectionLog() {
 
   // Filter and sort collections
   const filteredCollections = collections
-    .filter(collection => {
+    .filter((collection: SandwichCollection) => {
       // Host name filter
       if (searchFilters.hostName && !collection.hostName.toLowerCase().includes(searchFilters.hostName.toLowerCase())) {
         return false;
@@ -243,7 +243,7 @@ export default function SandwichCollectionLog() {
 
       return true;
     })
-    .sort((a, b) => {
+    .sort((a: SandwichCollection, b: SandwichCollection) => {
       const aValue = a[sortConfig.field];
       const bValue = b[sortConfig.field];
 
@@ -278,7 +278,7 @@ export default function SandwichCollectionLog() {
   }, [searchFilters, sortConfig]);
 
   // Get unique host names from collections for filtering
-  const uniqueHostNames = Array.from(new Set(collections.map(c => c.hostName))).sort();
+  const uniqueHostNames = Array.from(new Set(collections.map((c: SandwichCollection) => c.hostName))).sort();
 
   // Include all hosts (active and inactive) for collection assignment
   const hostOptions = [...hostsList.map(host => host.name), "Other"];
@@ -656,7 +656,7 @@ export default function SandwichCollectionLog() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedCollections(new Set(filteredCollections.map(c => c.id)));
+      setSelectedCollections(new Set(filteredCollections.map((c: SandwichCollection) => c.id)));
     } else {
       setSelectedCollections(new Set());
     }
@@ -1237,7 +1237,10 @@ export default function SandwichCollectionLog() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-4 gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
               <div className="text-sm text-slate-600">
-                Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} entries
+                {itemsPerPage >= 10000 ? 
+                  `Showing all ${totalItems} entries` :
+                  `Showing ${((currentPage - 1) * itemsPerPage) + 1}-${Math.min(currentPage * itemsPerPage, totalItems)} of ${totalItems} entries`
+                }
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                 <Label className="text-sm font-medium text-slate-700">Sort by:</Label>
@@ -1302,7 +1305,7 @@ export default function SandwichCollectionLog() {
           </div>
         )}
         <div className="space-y-4">
-          {paginatedCollections.map((collection) => {
+          {paginatedCollections.map((collection: SandwichCollection) => {
             const groupData = parseGroupCollections(collection.groupCollections);
             const totalSandwiches = calculateTotal(collection);
             const isSelected = selectedCollections.has(collection.id);
@@ -1461,11 +1464,12 @@ export default function SandwichCollectionLog() {
                   <SelectItem value="25">25 per page</SelectItem>
                   <SelectItem value="50">50 per page</SelectItem>
                   <SelectItem value="100">100 per page</SelectItem>
+                  <SelectItem value="10000">Show All</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {totalPages > 1 && (
+            {totalPages > 1 && itemsPerPage < 10000 && (
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
@@ -1523,7 +1527,10 @@ export default function SandwichCollectionLog() {
             )}
 
             <div className="text-sm text-slate-600 text-center sm:text-left">
-              Page {currentPage} of {totalPages}
+              {itemsPerPage >= 10000 ? 
+                `All ${totalItems} entries` :
+                `Page ${currentPage} of ${totalPages}`
+              }
             </div>
           </div>
         )}

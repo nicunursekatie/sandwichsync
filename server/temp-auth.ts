@@ -779,6 +779,8 @@ export async function initializeTempAuth() {
   // Setup default committees and committee member user
   try {
     // Create default committees if they don't exist
+    // TEMPORARILY DISABLED - migrating to conversation-based messaging
+    /*
     try {
       const committees = await storage.getAllCommittees();
       if (committees.length === 0) {
@@ -790,6 +792,7 @@ export async function initializeTempAuth() {
     } catch (error) {
       console.warn("Committee creation failed:", error.message);
     }
+    */
 
     // Create committee member user and assign to specific committee
     const committeeEmail = "katielong2316@gmail.com";

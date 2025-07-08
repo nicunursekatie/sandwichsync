@@ -250,6 +250,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         httpOnly: true, // Prevent XSS attacks
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for better persistence
         sameSite: "lax", // CSRF protection
+        domain: undefined, // Let the browser handle domain for localhost
+        path: "/", // Make cookie available to all paths
       },
       name: "tsp.session", // Custom session name
     }),
@@ -955,11 +957,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Simple conversation API endpoints for the new 3-table messaging system
-  app.get("/api/conversations", isAuthenticated, async (req, res) => {
+  // Message unread counts endpoint
+  app.get("/api/messages/unread-counts", isAuthenticated, async (req, res) => {
     try {
       const user = (req as any).user;
       if (!user?.id) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // For now, return empty counts - you can implement actual counting logic later
+      const unreadCounts = {
+        general: 0,
+        committee: 0,
+        hosts: 0,
+        drivers: 0,
+        recipients: 0,
+        core_team: 0,
+        direct: 0,
+        groups: 0,
+        total: 0
+      };
+
+      res.json(unreadCounts);
+    } catch (error) {
+      console.error("Error fetching unread counts:", error);
+      res.status(500).json({ message: "Failed to fetch unread counts" });
+    }
+  });
+
+  // Mark all messages as read endpoint
+  app.post("/api/messages/mark-all-read", isAuthenticated, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.id) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Implementation would go here
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      res.status(500).json({ message: "Failed to mark messages as read" });
+    }
+  });
+
+  // Simple conversation API endpoints for the new 3-table messaging system
+  app.get("/api/conversations", isAuthenticated, async (req, res) => {
+    console.log("=== /api/conversations REQUEST ===");
+    console.log("Headers:", req.headers);
+    console.log("Session ID:", req.sessionID);
+    console.log("Session data:", req.session);
+    console.log("User from req:", (req as any).user);
+    
+    try {
+      const user = (req as any).user;
+      if (!user?.id) {
+        console.log("No user ID found, returning 401");
         return res.status(401).json({ message: "Unauthorized" });
       }
 
@@ -1052,12 +1105,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(conversations)
           .where(eq(conversations.id, conversationId));
 
+        console.log(`🔍 [MAIN ROUTES] Conversation ${conversationId}:`, conversation);
+
         if (!conversation) {
           return res.status(404).json({ message: "Conversation not found" });
         }
 
         // Channel conversations are accessible to all users
         if (conversation.type !== "channel") {
+          console.log(`🔍 [MAIN ROUTES] Non-channel conversation, checking participants for user ${user.id}`);
           const [participant] = await db
             .select()
             .from(conversationParticipants)
@@ -1069,8 +1125,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
 
           if (!participant) {
+            console.log(`❌ [MAIN ROUTES] User ${user.id} not found as participant`);
             return res.status(403).json({ message: "Access denied" });
           }
+        } else {
+          console.log(`✅ [MAIN ROUTES] Channel conversation - allowing access for user ${user.id}`);
         }
 
         const conversationMessages = await db
@@ -1555,6 +1614,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Make broadcast functions globally available
   (global as any).broadcastNewMessage = broadcastNewMessage;
   (global as any).broadcastTaskAssignment = broadcastTaskAssignment;
+
+  // Setup clean messaging routes
+  setupCleanMessagingRoutes(app);
 
   return httpServer;
 }

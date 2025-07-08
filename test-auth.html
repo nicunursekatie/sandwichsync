@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Test</title>
+</head>
+<body>
+    <h1>Authentication Test</h1>
+    <div id="status"></div>
+    <button onclick="checkAuth()">Check Auth Status</button>
+    <button onclick="login()">Login</button>
+    <button onclick="testConversations()">Test Conversations API</button>
+    
+    <script>
+        async function checkAuth() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/auth/user', {
+                    credentials: 'include'
+                });
+                const data = response.ok ? await response.json() : null;
+                document.getElementById('status').innerHTML = `
+                    <p>Auth Status: ${response.status}</p>
+                    <p>User: ${data ? JSON.stringify(data, null, 2) : 'Not authenticated'}</p>
+                    <p>Cookie: ${document.cookie}</p>
+                `;
+            } catch (error) {
+                document.getElementById('status').textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        async function login() {
+            window.location.href = 'http://127.0.0.1:5000/api/login';
+        }
+        
+        async function testConversations() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/conversations', {
+                    credentials: 'include'
+                });
+                const data = response.ok ? await response.json() : { error: await response.text() };
+                document.getElementById('status').innerHTML = `
+                    <p>Conversations Status: ${response.status}</p>
+                    <p>Data: ${JSON.stringify(data, null, 2)}</p>
+                `;
+            } catch (error) {
+                document.getElementById('status').textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        // Check auth on load
+        checkAuth();
+    </script>
+</body>
+</html>

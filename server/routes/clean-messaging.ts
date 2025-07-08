@@ -20,6 +20,7 @@ export function setupCleanMessagingRoutes(app: Express) {
   app.get("/api/conversations", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user.id;
+      console.log("🔍 Getting conversations for user:", userId);
       
       const userConversations = await db
         .select({
@@ -55,6 +56,7 @@ export function setupCleanMessagingRoutes(app: Express) {
           ${conversations.createdAt}
         )`));
 
+      console.log("🔍 Found conversations for user:", userConversations);
       res.json(userConversations);
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -67,6 +69,7 @@ export function setupCleanMessagingRoutes(app: Express) {
     try {
       const conversationId = parseInt(req.params.id);
       const userId = req.user.id;
+      console.log(`🔍 User ${userId} trying to access messages for conversation ${conversationId}`);
 
       // Verify user is participant
       const participant = await db
@@ -78,8 +81,37 @@ export function setupCleanMessagingRoutes(app: Express) {
         ))
         .limit(1);
 
+      console.log(`🔍 Participant check result:`, participant);
+
       if (participant.length === 0) {
-        return res.status(403).json({ message: "Not authorized to view this conversation" });
+        console.log(`❌ User ${userId} is not a participant in conversation ${conversationId}`);
+        
+        // If this is a general conversation and user has general_chat permission, auto-add them
+        const conversation = await db
+          .select()
+          .from(conversations)
+          .where(eq(conversations.id, conversationId))
+          .limit(1);
+          
+        // Auto-join logic for General Chat and other accessible channels
+        const isGeneralChat = conversation.length > 0 && 
+          (conversation[0].name === 'General Chat' || conversation[0].type === 'general') && 
+          req.user.permissions?.includes('general_chat');
+          
+        const isCoreTeam = conversation.length > 0 && 
+          conversation[0].name === 'Core Team' && 
+          req.user.permissions?.includes('core_team_chat');
+          
+        if (isGeneralChat || isCoreTeam) {
+          console.log(`✅ Auto-adding user ${userId} to conversation ${conversationId} (${conversation[0].name})`);
+          await db.insert(conversationParticipants).values({
+            conversationId,
+            userId
+          });
+        } else {
+          console.log(`❌ No auto-join available for conversation ${conversationId}. Type: ${conversation[0]?.type}, Name: ${conversation[0]?.name}`);
+          return res.status(403).json({ message: "Not authorized to view this conversation" });
+        }
       }
 
       const conversationMessages = await db
@@ -125,7 +157,30 @@ export function setupCleanMessagingRoutes(app: Express) {
         .limit(1);
 
       if (participant.length === 0) {
-        return res.status(403).json({ message: "Not authorized to post to this conversation" });
+        // Auto-join logic for General Chat and other accessible channels
+        const conversation = await db
+          .select()
+          .from(conversations)
+          .where(eq(conversations.id, conversationId))
+          .limit(1);
+          
+        const isGeneralChat = conversation.length > 0 && 
+          (conversation[0].name === 'General Chat' || conversation[0].type === 'general') && 
+          req.user.permissions?.includes('general_chat');
+          
+        const isCoreTeam = conversation.length > 0 && 
+          conversation[0].name === 'Core Team' && 
+          req.user.permissions?.includes('core_team_chat');
+          
+        if (isGeneralChat || isCoreTeam) {
+          console.log(`✅ Auto-adding user ${userId} to conversation ${conversationId} for message sending`);
+          await db.insert(conversationParticipants).values({
+            conversationId,
+            userId
+          });
+        } else {
+          return res.status(403).json({ message: "Not authorized to post to this conversation" });
+        }
       }
 
       const [newMessage] = await db

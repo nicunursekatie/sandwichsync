@@ -33,5 +33,9 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    hmr: process.env.NODE_ENV === 'development' ? {
+      port: 5001,
+      host: 'localhost',
+    } : false,
   },
 });
