@@ -70,8 +70,8 @@ Watch for these error patterns in logs:
 ## Emergency Procedures
 
 ### 🚨 Platform Down
-1. Check Replit deployment status
-2. Restart workflow: "Start application"
+1. Check deployment status
+2. Restart application: `npm run dev` or `npm start`
 3. Verify DATABASE_URL environment variable
 4. Check for SSL certificate issues
 
@@ -118,7 +118,7 @@ Watch for these error patterns in logs:
 ## Emergency Contacts
 
 ### 🔧 Technical Issues
-- **Platform problems**: Check Replit status page
+- **Platform problems**: Check server logs and health endpoint
 - **Database issues**: Monitor PostgreSQL connection logs
 - **WebSocket problems**: Verify real-time features
 
@@ -139,7 +139,8 @@ npm run db:push
 # Use Analytics → Reports → Generate Report (CSV format)
 
 # System restart
-# Use Replit "Start application" workflow
+npm run dev    # Development
+npm start      # Production
 
 # Check system status
 # Monitor /api/system/health endpoint
@@ -147,7 +148,7 @@ npm run db:push
 
 ## File Locations
 
-- **Main config**: `replit.md`
+- **Main config**: `package.json`
 - **Database schema**: `shared/schema.ts`  
 - **API routes**: `server/routes.ts`
 - **User management**: `server/temp-auth.ts`

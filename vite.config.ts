@@ -1,41 +1,54 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 export default defineConfig({
-  plugins: [
-    react(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-        ]
-      : []),
-  ],
+  plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      "@": "/src",
+      "@shared": "/shared",
+      "@assets": "/attached_assets",
     },
   },
-  root: path.resolve(import.meta.dirname, "client"),
+  root: "client",
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    outDir: "../dist/public",
     emptyOutDir: true,
+    target: 'esnext',
+    minify: true,
+    cssMinify: true,
+    rollupOptions: {
+      output: {
+        manualChunks: (id: string) => {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react';
+            }
+            if (id.includes('@tanstack')) {
+              return 'tanstack';
+            }
+            if (id.includes('chart.js') || id.includes('recharts')) {
+              return 'charts';
+            }
+            return 'vendor';
+          }
+        },
+      },
+    },
   },
   server: {
     fs: {
       strict: true,
       deny: ["**/.*"],
     },
-    hmr: process.env.NODE_ENV === 'development' ? {
+    hmr: {
       port: 5001,
       host: 'localhost',
-    } : false,
+    },
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: 'esnext',
+    },
   },
 });

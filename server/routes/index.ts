@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { isAuthenticated } from "../replitAuth";
+import { isAuthenticated } from "../temp-auth";
 
 const router = Router();
 
