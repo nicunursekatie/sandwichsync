@@ -18,7 +18,7 @@ export default function HostChat() {
   const { user } = useAuth();
   const [selectedHost, setSelectedHost] = useState<Host | null>(null);
 
-  const { data: hosts = [] } = useQuery<HostWithContacts[]>({
+  const { data: hosts = [], isLoading: hostsLoading, error: hostsError } = useQuery<HostWithContacts[]>({
     queryKey: ['/api/hosts-with-contacts'],
   });
 
@@ -51,6 +51,37 @@ export default function HostChat() {
 
   // Host selection mode
   if (!selectedHost) {
+    // Handle loading state
+    if (hostsLoading) {
+      return (
+        <div className="p-6 text-center">
+          <div className="text-muted-foreground">Loading hosts...</div>
+        </div>
+      );
+    }
+
+    // Handle error state
+    if (hostsError) {
+      return (
+        <div className="p-6 text-center">
+          <div className="text-red-600">
+            Error loading hosts: {hostsError instanceof Error ? hostsError.message : 'Unknown error'}
+          </div>
+        </div>
+      );
+    }
+
+    // Handle empty state
+    if (hosts.length === 0) {
+      return (
+        <div className="p-6 text-center">
+          <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <h3 className="text-lg font-medium mb-2">No Hosts Available</h3>
+          <p className="text-muted-foreground">There are no hosts to communicate with at this time.</p>
+        </div>
+      );
+    }
+
     return (
       <div className="p-6">
         <h2 className="text-2xl font-bold mb-6 flex items-center">

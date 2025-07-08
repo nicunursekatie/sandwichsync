@@ -3,11 +3,12 @@ import { z } from "zod";
 import { storage } from "../storage-wrapper";
 import { sanitizeMiddleware } from "../middleware/sanitizer";
 import { insertHostSchema, insertHostContactSchema } from "@shared/schema";
+import { isAuthenticated } from "../temp-auth";
 
 const router = Router();
 
 // Host management routes
-router.get("/hosts", async (req, res) => {
+router.get("/hosts", isAuthenticated, async (req, res) => {
   try {
     const hosts = await storage.getAllHosts();
     res.json(hosts);
@@ -17,7 +18,7 @@ router.get("/hosts", async (req, res) => {
   }
 });
 
-router.get("/hosts-with-contacts", async (req, res) => {
+router.get("/hosts-with-contacts", isAuthenticated, async (req, res) => {
   try {
     const hostsWithContacts = await storage.getAllHostsWithContacts();
     res.json(hostsWithContacts);
@@ -27,7 +28,7 @@ router.get("/hosts-with-contacts", async (req, res) => {
   }
 });
 
-router.get("/hosts/:id", async (req, res) => {
+router.get("/hosts/:id", isAuthenticated, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const host = await storage.getHost(id);
@@ -41,7 +42,7 @@ router.get("/hosts/:id", async (req, res) => {
   }
 });
 
-router.post("/hosts", sanitizeMiddleware, async (req, res) => {
+router.post("/hosts", isAuthenticated, sanitizeMiddleware, async (req, res) => {
   try {
     const result = insertHostSchema.safeParse(req.body);
     if (!result.success) {
@@ -55,7 +56,7 @@ router.post("/hosts", sanitizeMiddleware, async (req, res) => {
   }
 });
 
-router.patch("/hosts/:id", sanitizeMiddleware, async (req, res) => {
+router.patch("/hosts/:id", isAuthenticated, sanitizeMiddleware, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const updates = req.body;
@@ -70,7 +71,7 @@ router.patch("/hosts/:id", sanitizeMiddleware, async (req, res) => {
   }
 });
 
-router.delete("/hosts/:id", async (req, res) => {
+router.delete("/hosts/:id", isAuthenticated, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const success = await storage.deleteHost(id);
@@ -85,7 +86,7 @@ router.delete("/hosts/:id", async (req, res) => {
 });
 
 // Host contact routes
-router.get("/host-contacts", async (req, res) => {
+router.get("/host-contacts", isAuthenticated, async (req, res) => {
   try {
     const hostId = req.query.hostId ? parseInt(req.query.hostId as string) : undefined;
     if (hostId) {
@@ -103,7 +104,7 @@ router.get("/host-contacts", async (req, res) => {
   }
 });
 
-router.post("/host-contacts", sanitizeMiddleware, async (req, res) => {
+router.post("/host-contacts", isAuthenticated, sanitizeMiddleware, async (req, res) => {
   try {
     const result = insertHostContactSchema.safeParse(req.body);
     if (!result.success) {
@@ -117,7 +118,7 @@ router.post("/host-contacts", sanitizeMiddleware, async (req, res) => {
   }
 });
 
-router.patch("/host-contacts/:id", sanitizeMiddleware, async (req, res) => {
+router.patch("/host-contacts/:id", isAuthenticated, sanitizeMiddleware, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const updates = req.body;
@@ -132,7 +133,7 @@ router.patch("/host-contacts/:id", sanitizeMiddleware, async (req, res) => {
   }
 });
 
-router.delete("/host-contacts/:id", async (req, res) => {
+router.delete("/host-contacts/:id", isAuthenticated, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const success = await storage.deleteHostContact(id);
