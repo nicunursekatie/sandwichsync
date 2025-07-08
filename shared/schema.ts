@@ -375,6 +375,20 @@ export type Project = typeof projects.$inferSelect;
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+// Extended Message type with user information from joins
+export interface MessageWithUser extends Message {
+  user?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    displayName?: string;
+  };
+  // Legacy compatibility fields that components might expect
+  userEmail?: string;
+  userFirstName?: string;
+  userLastName?: string;
+}
 export type WeeklyReport = typeof weeklyReports.$inferSelect;
 export type InsertWeeklyReport = z.infer<typeof insertWeeklyReportSchema>;
 export type SandwichCollection = typeof sandwichCollections.$inferSelect;

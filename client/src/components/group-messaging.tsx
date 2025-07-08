@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,11 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { useMessageReads } from "@/hooks/useMessageReads";
-import { MessageCircle, Plus, Users, Send, Crown, Trash2, UserPlus, Edit, MoreVertical, Archive, LogOut, VolumeX, Eye, X } from "lucide-react";
+import { MessageCircle, Plus, Users, Crown, Trash2, UserPlus, Archive, LogOut, VolumeX, Eye, X, ChevronLeft } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import type { MessageGroup, InsertMessageGroup, GroupMembership, Message, User } from "@shared/schema";
-import { PERMISSIONS } from "@shared/auth-utils";
+import BaseChat from "./base-chat";
+import type { MessageGroup, InsertMessageGroup, User } from "@shared/schema";
 
 interface GroupWithMembers extends MessageGroup {
   memberCount: number;
@@ -36,12 +34,9 @@ interface GroupMessagesProps {
 
 export function GroupMessaging({ currentUser }: GroupMessagesProps) {
   const [selectedGroup, setSelectedGroup] = useState<GroupWithMembers | null>(null);
-  const [newMessage, setNewMessage] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
   const [showMemberDialog, setShowMemberDialog] = useState(false);
-  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [editedContent, setEditedContent] = useState("");
   const [groupForm, setGroupForm] = useState({
     name: "",
     description: "",
@@ -52,36 +47,6 @@ export function GroupMessaging({ currentUser }: GroupMessagesProps) {
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // Initialize read tracking hook
-  const { useAutoMarkAsRead } = useMessageReads();
-
-  // Helper functions for user display
-  const getUserDisplayName = (userId: string) => {
-    const userFound = allUsers.find((u: any) => u.id === userId);
-    if (userFound) {
-      if (userFound.displayName) return userFound.displayName;
-      if (userFound.firstName) return userFound.firstName;
-      if (userFound.email) return userFound.email.split('@')[0];
-    }
-    return 'Member';
-  };
-
-  const getUserInitials = (userId: string) => {
-    const userFound = allUsers.find((u: any) => u.id === userId);
-    if (userFound) {
-      if (userFound.firstName && userFound.lastName) {
-        return (userFound.firstName[0] + userFound.lastName[0]).toUpperCase();
-      }
-      if (userFound.firstName) {
-        return userFound.firstName[0].toUpperCase();
-      }
-      if (userFound.email) {
-        return userFound.email[0].toUpperCase();
-      }
-    }
-    return 'M';
-  };
 
   // Fetch user's message groups
   const { data: groups = [], isLoading: groupsLoading } = useQuery<GroupWithMembers[]>({
@@ -118,34 +83,32 @@ export function GroupMessaging({ currentUser }: GroupMessagesProps) {
     enabled: !!selectedGroup,
   });
 
-  // Find existing group conversation (don't create new ones)
+  // Get or create group conversation
   const { data: groupConversation } = useQuery({
-    queryKey: ["/api/conversations/group", selectedGroup?.name],
+    queryKey: ["/api/messaging/conversations/group", selectedGroup?.id],
     queryFn: async () => {
       if (!selectedGroup) return null;
-      // Get all conversations and find the one matching this group name
-      const response = await apiRequest('GET', '/api/conversations');
-      const conversations = response;
-      return conversations.find((conv: any) => 
+      
+      // First try to find existing group conversation
+      const conversationsResponse = await apiRequest('GET', '/api/messaging/conversations');
+      const conversations = await conversationsResponse.json();
+      const existingConversation = conversations.find((conv: any) => 
         conv.type === 'group' && conv.name === selectedGroup.name
-      ) || null;
+      );
+
+      if (existingConversation) {
+        return existingConversation;
+      }
+
+      // Create new group conversation if not found
+      const response = await apiRequest('POST', '/api/messaging/conversations', {
+        type: 'group',
+        name: selectedGroup.name
+      });
+      return await response.json();
     },
     enabled: !!selectedGroup,
   });
-
-  // Fetch messages for group conversation
-  const { data: groupMessages = [] } = useQuery<Message[]>({
-    queryKey: ["/api/conversations", groupConversation?.id, "messages"],
-    enabled: !!groupConversation,
-    refetchInterval: 3000,
-  });
-
-  // Auto-mark group messages as read when viewing group
-  useAutoMarkAsRead(
-    "groups", 
-    groupMessages, 
-    !!selectedGroup
-  );
 
   // Create new group mutation
   const createGroupMutation = useMutation({
@@ -153,9 +116,13 @@ export function GroupMessaging({ currentUser }: GroupMessagesProps) {
       const response = await fetch("/api/message-groups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to create group");
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Failed to create group: ${error}`);
+      }
       return response.json();
     },
     onSuccess: (newGroup) => {
@@ -164,30 +131,14 @@ export function GroupMessaging({ currentUser }: GroupMessagesProps) {
       setShowCreateDialog(false);
       setSelectedGroup(newGroup);
       toast({ title: "Group created successfully!" });
-      
-      // Send congratulations notification through the notification system
-      fetch("/api/notifications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: currentUser?.id,
-          type: "success",
-          title: "Group Created Successfully!",
-          message: `🎉 You've successfully created the "${newGroup.name}" group. Start collaborating with your team members!`,
-          data: { groupId: newGroup.id, action: "group_created" }
-        }),
-      }).catch(err => console.log("Notification failed:", err));
-      
-      // Also send a welcome message to the group
-      fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: `Welcome to ${newGroup.name}! This group was created by ${currentUser?.firstName || currentUser?.email}. Let's start collaborating! 🚀`,
-          committee: `group_${newGroup.id}`,
-          sender: "System"
-        }),
-      }).catch(err => console.log("Welcome message failed:", err));
+    },
+    onError: (error) => {
+      console.error("Group creation error:", error);
+      toast({ 
+        title: "Failed to create group", 
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive" 
+      });
     },
   });
 
@@ -212,83 +163,6 @@ export function GroupMessaging({ currentUser }: GroupMessagesProps) {
     },
   });
 
-  // Send message mutation  
-  const sendMessageMutation = useMutation({
-    mutationFn: async (data: { content: string }) => {
-      if (!groupConversation) throw new Error("No conversation available");
-      return await apiRequest('POST', `/api/conversations/${groupConversation.id}/messages`, {
-        content: data.content
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", groupConversation?.id, "messages"] });
-      setNewMessage("");
-    },
-  });
-
-  // Edit message mutation
-  const editMessageMutation = useMutation({
-    mutationFn: async ({ messageId, content }: { messageId: number; content: string }) => {
-      return await apiRequest('PATCH', `/api/messages/${messageId}`, { content });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", groupConversation?.id, "messages"] });
-      setEditingMessage(null);
-      setEditedContent("");
-      toast({ title: "Message updated successfully!" });
-    },
-  });
-
-  // Delete message mutation
-  const deleteMessageMutation = useMutation({
-    mutationFn: async (messageId: number) => {
-      return await apiRequest('DELETE', `/api/messages/${messageId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", groupConversation?.id, "messages"] });
-      toast({ title: "Message deleted successfully!" });
-    },
-  });
-
-  // Thread status management mutations
-  const updateThreadStatusMutation = useMutation({
-    mutationFn: async ({ threadId, status }: { threadId: number; status: string }) => {
-      const response = await fetch(`/api/threads/${threadId}/my-status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!response.ok) throw new Error("Failed to update thread status");
-      return response.json();
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/message-groups"] });
-      const statusLabels = {
-        archived: "archived",
-        left: "left",
-        muted: "muted",
-        active: "restored"
-      };
-      toast({ 
-        title: `Thread ${statusLabels[variables.status as keyof typeof statusLabels]}!`,
-        description: variables.status === 'left' 
-          ? "You have left this conversation and will no longer receive messages."
-          : variables.status === 'archived' 
-          ? "This conversation has been archived and moved to your archived folder."
-          : variables.status === 'muted'
-          ? "You will no longer receive notifications from this conversation."
-          : "This conversation has been restored to your active conversations."
-      });
-      
-      // If user left or archived the thread, deselect it
-      if (variables.status === 'left' || variables.status === 'archived') {
-        setSelectedGroup(null);
-      }
-    },
-  });
-
-
-
   // Remove member mutation
   const removeMemberMutation = useMutation({
     mutationFn: async ({ groupId, userId }: { groupId: number; userId: string }) => {
@@ -303,7 +177,6 @@ export function GroupMessaging({ currentUser }: GroupMessagesProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/message-groups"] });
       queryClient.invalidateQueries({ queryKey: ["/api/message-groups", selectedGroup?.id, "members"] });
       
-      // If user removed themselves, deselect the group
       if (variables.userId === currentUser?.id) {
         setSelectedGroup(null);
         toast({ title: "You have left the group successfully!" });
@@ -374,727 +247,464 @@ export function GroupMessaging({ currentUser }: GroupMessagesProps) {
     });
   };
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
-    
-    sendMessageMutation.mutate({
-      content: newMessage,
-    });
-  };
-
-  const handleEditMessage = (message: Message) => {
-    setEditingMessage(message);
-    setEditedContent(message.content);
-  };
-
-  const handleSaveEdit = () => {
-    if (!editingMessage || !editedContent.trim()) return;
-    
-    editMessageMutation.mutate({
-      messageId: editingMessage.id,
-      content: editedContent,
-    });
-  };
-
-  const handleCancelEdit = () => {
-    setEditingMessage(null);
-    setEditedContent("");
-  };
-
-  const handleDeleteMessage = (messageId: number) => {
-    if (confirm("Are you sure you want to delete this message?")) {
-      deleteMessageMutation.mutate(messageId);
+  const formatDisplayName = (user: User) => {
+    if (user.firstName || user.lastName) {
+      return `${user.firstName || ''} ${user.lastName || ''}`.trim();
     }
+    return user.email.split('@')[0];
   };
 
-  // Thread management handlers
-  const handleArchiveThread = (threadId: number) => {
-    updateThreadStatusMutation.mutate({ threadId, status: 'archived' });
-  };
+  // Different tabs for group categories
+  const activeGroups = groups.filter(g => g.userRole !== 'archived' && g.userRole !== 'left');
+  const archivedGroups = groups.filter(g => g.userRole === 'archived');
+  const leftGroups = groups.filter(g => g.userRole === 'left');
 
-  const handleLeaveThread = (threadId: number) => {
-    if (confirm("Are you sure you want to leave this conversation? You won't be able to see new messages.")) {
-      updateThreadStatusMutation.mutate({ threadId, status: 'left' });
-    }
-  };
-
-  const handleMuteThread = (threadId: number) => {
-    updateThreadStatusMutation.mutate({ threadId, status: 'muted' });
-  };
-
-  const handleUnmuteThread = (threadId: number) => {
-    updateThreadStatusMutation.mutate({ threadId, status: 'active' });
-  };
-
-  const handleLeaveGroup = (groupId: number) => {
-    if (confirm("Are you sure you want to leave this group? You won't be able to see new messages and can only be re-added by an admin.")) {
-      removeMemberMutation.mutate({ 
-        groupId, 
-        userId: currentUser?.id 
-      });
-    }
-  };
-
-  const canEditMessage = (message: Message) => {
-    // Message owner can always edit their own messages
-    if (message.userId === currentUser?.id) {
-      return true;
-    }
-    
-    // Super admins can moderate any message
-    if (currentUser?.permissions?.includes(PERMISSIONS.MODERATE_MESSAGES)) {
-      return true;
-    }
-    
-    return false;
-  };
-
-  const formatDisplayName = (user: any) => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName} ${user.lastName}`;
-    }
-    return user.email;
-  };
-
-  const getInitials = (user: any) => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
-    }
-    return user.email[0].toUpperCase();
-  };
-
-  if (groupsLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <MessageCircle className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-          <p className="text-gray-500">Loading groups...</p>
+  // If a group is selected and we have a conversation, show the chat
+  if (selectedGroup && groupConversation) {
+    // Custom header with group info and actions
+    const headerIcon = (
+      <div className="flex items-center flex-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setSelectedGroup(null)}
+          className="mr-2 p-1 lg:hidden"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <Avatar className="h-8 w-8 mr-3">
+          <AvatarFallback>
+            {selectedGroup.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <h3 className="font-semibold flex items-center gap-2">
+            {selectedGroup.name}
+            {selectedGroup.userRole === 'admin' && (
+              <Badge variant="secondary" className="text-xs">
+                <Crown className="h-3 w-3 mr-1" />
+                Admin
+              </Badge>
+            )}
+          </h3>
+          <button
+            onClick={() => setShowMemberDialog(true)}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+          >
+            <Users className="h-3 w-3" />
+            {selectedGroup.memberCount} members
+          </button>
         </div>
       </div>
     );
-  }
 
-  return (
-    <div className="h-full max-h-screen flex flex-col lg:flex-row">
-      {/* Groups sidebar */}
-      <div className={`${selectedGroup ? 'hidden lg:flex' : 'flex'} w-full lg:w-1/3 lg:border-r bg-gray-50 dark:bg-gray-900 flex-col lg:min-h-0`}>
-        <div className="p-4 border-b">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Message Groups</h3>
-            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
-                  <Plus className="h-4 w-4 mr-1" />
-                  New Group
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create Message Group</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Group Name</label>
-                    <Input
-                      value={groupForm.name}
-                      onChange={(e) => setGroupForm(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="Enter group name"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Description (Optional)</label>
-                    <Textarea
-                      value={groupForm.description}
-                      onChange={(e) => setGroupForm(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Enter group description"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Add Members</label>
-                    <Select onValueChange={(userId) => {
-                      if (!groupForm.memberIds.includes(userId)) {
-                        setGroupForm(prev => ({ 
-                          ...prev, 
-                          memberIds: [...prev.memberIds, userId] 
-                        }));
-                      }
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select users to add" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allUsers
-                          .filter(user => user.id !== currentUser?.id && !groupForm.memberIds.includes(user.id))
-                          .map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {formatDisplayName(user)}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    {groupForm.memberIds.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {groupForm.memberIds.map((userId) => {
-                          const user = allUsers.find(u => u.id === userId);
-                          return (
-                            <Badge key={userId} variant="secondary" className="text-xs">
-                              {user ? formatDisplayName(user) : userId}
-                              <button
-                                onClick={() => setGroupForm(prev => ({
-                                  ...prev,
-                                  memberIds: prev.memberIds.filter(id => id !== userId)
-                                }))}
-                                className="ml-1 text-red-500 hover:text-red-700"
-                              >
-                                ×
-                              </button>
-                            </Badge>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={handleCreateGroup}
-                      disabled={createGroupMutation.isPending}
-                    >
-                      Create Group
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+    const headerActions = (
+      <div className="flex items-center gap-2">
+        {(currentUser?.role === 'super_admin' || selectedGroup.userRole === 'admin') && (
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => setShowAddMemberDialog(true)}
+          >
+            <UserPlus className="h-4 w-4" />
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm">•••</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onClick={() => removeMemberMutation.mutate({ 
+                groupId: selectedGroup.id, 
+                userId: currentUser?.id 
+              })}
+              className="text-red-600"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Leave Group
+            </DropdownMenuItem>
+            {currentUser?.role === 'super_admin' && (
+              <DropdownMenuItem 
+                onClick={() => {
+                  if (confirm(`Delete entire group "${selectedGroup.name}"? This cannot be undone.`)) {
+                    deleteGroupMutation.mutate(selectedGroup.id);
+                  }
+                }}
+                className="text-red-700 font-semibold"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Group
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+
+    return (
+      <>
+        <div className="h-full max-h-screen flex">
+          {/* Group List - Hidden on mobile when chat is active */}
+          <div className="hidden lg:block w-1/3 border-r bg-gray-50 dark:bg-gray-900">
+            <GroupsList 
+              groups={groups}
+              selectedGroup={selectedGroup}
+              onSelectGroup={setSelectedGroup}
+              onCreateGroup={() => setShowCreateDialog(true)}
+              currentUser={currentUser}
+            />
+          </div>
+
+          {/* Chat Area */}
+          <div className="flex-1">
+            <BaseChat
+              conversationId={groupConversation.id}
+              conversationName={selectedGroup.name}
+              placeholder={`Message ${selectedGroup.name}...`}
+              headerIcon={headerIcon}
+              headerActions={headerActions}
+            />
           </div>
         </div>
 
-        <ScrollArea className="flex-1">
-          <div className="p-2 space-y-2">
-            {groups.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Users className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">No groups yet</p>
-                <p className="text-xs">Create your first group to get started</p>
-              </div>
-            ) : (
-              groups.map((group) => (
-                <Card
-                  key={group.id}
-                  className={`cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                    selectedGroup?.id === group.id ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                  onClick={() => setSelectedGroup(group)}
-                >
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium truncate">{group.name}</h4>
-                          {group.userRole === 'admin' && (
-                            <Crown className="h-3 w-3 text-yellow-500" />
-                          )}
-                        </div>
-                        {group.description && (
-                          <p className="text-xs text-gray-500 truncate">{group.description}</p>
-                        )}
-                        <div className="flex items-center gap-1 mt-1">
-                          <Users className="h-3 w-3 text-gray-400" />
-                          <button 
-                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedGroup(group);
-                              setShowMemberDialog(true);
-                            }}
-                          >
-                            {group.memberCount} members
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </ScrollArea>
-      </div>
-
-      {/* Chat area */}
-      <div className={`${selectedGroup ? 'flex' : 'hidden lg:flex'} flex-1 flex-col min-h-0`}>
-        {selectedGroup ? (
-          <>
-            {/* Group header */}
-            <div className="p-4 border-b bg-white dark:bg-gray-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {/* Back button for mobile */}
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="lg:hidden"
-                    onClick={() => setSelectedGroup(null)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                  <div>
-                    <h3 className="font-semibold flex items-center gap-2">
-                      {selectedGroup.name}
-                      {(selectedGroup.userRole === 'admin' || selectedGroup.userRole === 'moderator' || currentUser?.role === 'super_admin') && (
-                        <Crown className="h-4 w-4 text-yellow-500" />
-                      )}
-                    </h3>
-                  {selectedGroup.description && (
-                    <p className="text-sm text-gray-500">{selectedGroup.description}</p>
-                  )}
-                  <div className="flex items-center gap-2 mt-1">
-                    <button 
-                      className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
-                      onClick={() => setShowMemberDialog(true)}
-                    >
-                      <Users className="h-3 w-3" />
-                      {selectedGroup.memberCount} members
-                    </button>
-                  </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">
-                    <Users className="h-3 w-3 mr-1" />
-                    {selectedGroup.memberCount} members
-                  </Badge>
-                  
-                  {/* Thread Management Dropdown */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="outline">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem 
-                        onClick={() => handleArchiveThread(selectedGroup.id)}
-                        disabled={updateThreadStatusMutation.isPending}
-                      >
-                        <Archive className="h-4 w-4 mr-2" />
-                        Archive Thread
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleMuteThread(selectedGroup.id)}
-                        disabled={updateThreadStatusMutation.isPending}
-                      >
-                        <VolumeX className="h-4 w-4 mr-2" />
-                        Mute Notifications
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleLeaveGroup(selectedGroup.id)}
-                        disabled={removeMemberMutation.isPending}
-                        className="text-red-600 dark:text-red-400"
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Leave Group
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleLeaveThread(selectedGroup.id)}
-                        disabled={updateThreadStatusMutation.isPending}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Leave Conversation
-                      </DropdownMenuItem>
-                      {currentUser?.role === 'super_admin' && (
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            if (confirm(`⚠️ DANGER: Delete entire group "${selectedGroup.name}"?\n\nThis will permanently delete:\n• All messages in this group\n• All member information\n• The entire conversation thread\n\nThis action CANNOT be undone. Are you absolutely sure?`)) {
-                              deleteGroupMutation.mutate(selectedGroup.id);
-                            }
-                          }}
-                          disabled={deleteGroupMutation.isPending}
-                          className="text-red-700 hover:text-red-800 font-semibold border-t"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Entire Group
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  {(currentUser?.role === 'super_admin' || selectedGroup.userRole === 'admin' || selectedGroup.userRole === 'moderator' || selectedGroup.userRole === 'member') && (
-                    <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="outline">
-                          <UserPlus className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Add Members to {selectedGroup.name}</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-sm font-medium">Select Members to Add</label>
-                            <Select onValueChange={(userId) => {
-                              const existingMemberIds = groupMembers.map(m => m.userId);
-                              if (!addMemberForm.memberIds.includes(userId) && !existingMemberIds.includes(userId)) {
-                                setAddMemberForm(prev => ({ 
-                                  memberIds: [...prev.memberIds, userId] 
-                                }));
-                              }
-                            }}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select users to add" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {allUsers
-                                  .filter(user => {
-                                    const existingMemberIds = groupMembers.map(m => m.userId);
-                                    return user.id !== currentUser?.id && 
-                                           !addMemberForm.memberIds.includes(user.id) &&
-                                           !existingMemberIds.includes(user.id);
-                                  })
-                                  .map((user) => (
-                                    <SelectItem key={user.id} value={user.id}>
-                                      {formatDisplayName(user)}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                            {addMemberForm.memberIds.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {addMemberForm.memberIds.map((userId) => {
-                                  const user = allUsers.find(u => u.id === userId);
-                                  return (
-                                    <Badge key={userId} variant="secondary" className="text-xs">
-                                      {user ? formatDisplayName(user) : userId}
-                                      <button
-                                        onClick={() => setAddMemberForm(prev => ({
-                                          memberIds: prev.memberIds.filter(id => id !== userId)
-                                        }))}
-                                        className="ml-1 text-red-500 hover:text-red-700"
-                                      >
-                                        ×
-                                      </button>
-                                    </Badge>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button 
-                              onClick={handleAddMembers}
-                              disabled={addMembersMutation.isPending || addMemberForm.memberIds.length === 0}
-                            >
-                              Add Members
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-3">
-                {groupMessages.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <MessageCircle className="h-8 w-8 mx-auto mb-2" />
-                    <p className="text-sm">No messages yet</p>
-                    <p className="text-xs">Start the conversation!</p>
-                  </div>
-                ) : (
-                  groupMessages.map((message) => (
-                    <div key={message.id} className="group relative">
-                      <div className="flex gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="text-xs">
-                            {getUserInitials(message.userId)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-sm">{getUserDisplayName(message.userId)}</span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(message.createdAt).toLocaleTimeString()}
-                            </span>
-                            {canEditMessage(message) && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    <MoreVertical className="h-3 w-3" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEditMessage(message)}>
-                                    <Edit className="h-3 w-3 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDeleteMessage(message.id)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="h-3 w-3 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                          </div>
-                          {editingMessage?.id === message.id ? (
-                            <div className="space-y-2">
-                              <Textarea
-                                value={editedContent}
-                                onChange={(e) => setEditedContent(e.target.value)}
-                                className="text-sm"
-                                rows={2}
-                              />
-                              <div className="flex gap-2">
-                                <Button 
-                                  size="sm" 
-                                  onClick={handleSaveEdit}
-                                  disabled={editMessageMutation.isPending}
-                                >
-                                  Save
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={handleCancelEdit}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="text-sm bg-gray-100 dark:bg-gray-700 rounded-lg p-2">
-                              {message.content}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-
-            {/* Message input */}
-            <div className="p-4 border-t bg-white dark:bg-gray-800">
-              <div className="flex gap-2">
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type your message..."
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                />
-                <Button 
-                  onClick={handleSendMessage}
-                  disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <MessageCircle className="h-12 w-12 mx-auto mb-3" />
-              <h3 className="text-lg font-medium mb-1">Select a group to start messaging</h3>
-              <p className="text-sm">Choose a group from the sidebar or create a new one</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Member Management Dialog */}
-      <Dialog open={showMemberDialog} onOpenChange={setShowMemberDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Group Members - {selectedGroup?.name}</DialogTitle>
-            <DialogDescription>
-              View and manage group members. Admins can add or remove members.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Current Members */}
-            <div>
-              <h4 className="font-medium mb-3 flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Current Members ({groupMembers.length})
-              </h4>
-              <div className="max-h-60 overflow-y-auto space-y-2">
+        {/* Member Management Dialog */}
+        <Dialog open={showMemberDialog} onOpenChange={setShowMemberDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{selectedGroup.name} Members</DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-96">
+              <div className="space-y-2">
                 {groupMembers.map((member) => (
-                  <div key={member.userId} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={member.userId} className="flex items-center justify-between p-2 rounded hover:bg-gray-50">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
                         <AvatarFallback>
-                          {member.firstName?.[0]?.toUpperCase() || "?"}
+                          {member.firstName?.[0]}{member.lastName?.[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium">
+                        <p className="font-medium text-sm">
                           {member.firstName} {member.lastName}
-                        </div>
-                        <div className="text-sm text-gray-500">{member.email}</div>
+                        </p>
+                        <p className="text-xs text-muted-foreground">{member.email}</p>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
                       {member.role === 'admin' && (
                         <Badge variant="secondary" className="text-xs">
                           <Crown className="h-3 w-3 mr-1" />
                           Admin
                         </Badge>
                       )}
-                      {/* Platform super admin or group admin can manage members */}
-                      {(currentUser?.role === 'super_admin' || selectedGroup?.userRole === 'admin' || selectedGroup?.userRole === 'moderator') && (
-                        <div className="flex items-center gap-1">
-                          {/* Role Management Dropdown */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <MoreVertical className="h-3 w-3" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {member.role === 'member' ? (
-                                <DropdownMenuItem 
-                                  onClick={() => {
-                                    if (confirm(`Promote ${member.firstName} ${member.lastName} to group admin?`)) {
-                                      promoteMemberMutation.mutate({
-                                        groupId: selectedGroup.id,
-                                        userId: member.userId,
-                                        role: 'admin'
-                                      });
-                                    }
-                                  }}
-                                  disabled={promoteMemberMutation.isPending}
-                                >
-                                  <Crown className="h-3 w-3 mr-2" />
-                                  Promote to Admin
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem 
-                                  onClick={() => {
-                                    if (confirm(`Demote ${member.firstName} ${member.lastName} to regular member?`)) {
-                                      promoteMemberMutation.mutate({
-                                        groupId: selectedGroup.id,
-                                        userId: member.userId,
-                                        role: 'member'
-                                      });
-                                    }
-                                  }}
-                                  disabled={promoteMemberMutation.isPending}
-                                >
-                                  <Crown className="h-3 w-3 mr-2" />
-                                  Demote to Member
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem 
-                                onClick={() => {
-                                  if (confirm(`Remove ${member.firstName} ${member.lastName} from this group?`)) {
-                                    removeMemberMutation.mutate({
-                                      groupId: selectedGroup.id,
-                                      userId: member.userId,
-                                    });
-                                  }
-                                }}
-                                disabled={removeMemberMutation.isPending}
-                                className="text-red-600"
-                              >
-                                <X className="h-3 w-3 mr-2" />
-                                Remove Member
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      )}
                     </div>
+                    {(currentUser?.role === 'super_admin' || selectedGroup.userRole === 'admin') && member.userId !== currentUser?.id && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => promoteMemberMutation.mutate({
+                            groupId: selectedGroup.id,
+                            userId: member.userId,
+                            role: member.role === 'admin' ? 'member' : 'admin'
+                          })}
+                        >
+                          {member.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeMemberMutation.mutate({
+                            groupId: selectedGroup.id,
+                            userId: member.userId
+                          })}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-            </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
 
-            {/* Add Members Section (Platform super admin or any group member can add) */}
-            {(currentUser?.role === 'super_admin' || selectedGroup?.userRole === 'admin' || selectedGroup?.userRole === 'moderator' || selectedGroup?.userRole === 'member') && (
-              <div className="border-t pt-4">
-                <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Add New Members
-                </h4>
-                <div className="space-y-3">
-                  <Select
-                    value=""
-                    onValueChange={(userId) => {
-                      if (userId && !addMemberForm.memberIds.includes(userId)) {
-                        setAddMemberForm(prev => ({
-                          memberIds: [...prev.memberIds, userId]
-                        }));
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select users to add..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allUsers
-                        .filter(user => 
-                          !groupMembers.some(member => member.userId === user.id) &&
-                          !addMemberForm.memberIds.includes(user.id)
-                        )
-                        .map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.firstName} {user.lastName} ({user.email})
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Selected Users to Add */}
-                  {addMemberForm.memberIds.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Selected to add:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {addMemberForm.memberIds.map((userId) => {
-                          const user = allUsers.find(u => u.id === userId);
-                          return (
-                            <Badge key={userId} variant="secondary" className="flex items-center gap-1">
-                              {user?.firstName} {user?.lastName}
-                              <X
-                                className="h-3 w-3 cursor-pointer"
-                                onClick={() => {
-                                  setAddMemberForm(prev => ({
-                                    memberIds: prev.memberIds.filter(id => id !== userId)
-                                  }));
-                                }}
-                              />
-                            </Badge>
-                          );
-                        })}
-                      </div>
-                      <Button
-                        onClick={handleAddMembers}
-                        disabled={addMembersMutation.isPending}
-                        className="w-full"
-                      >
-                        {addMembersMutation.isPending ? "Adding..." : `Add ${addMemberForm.memberIds.length} Member(s)`}
-                      </Button>
-                    </div>
-                  )}
-                </div>
+        {/* Add Members Dialog */}
+        <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Members to {selectedGroup.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Select Members to Add</label>
+                <Select onValueChange={(userId) => {
+                  const existingMemberIds = groupMembers.map(m => m.userId);
+                  if (!addMemberForm.memberIds.includes(userId) && !existingMemberIds.includes(userId)) {
+                    setAddMemberForm(prev => ({ 
+                      memberIds: [...prev.memberIds, userId] 
+                    }));
+                  }
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select users to add" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allUsers
+                      .filter(user => {
+                        const existingMemberIds = groupMembers.map(m => m.userId);
+                        return user.id !== currentUser?.id && 
+                               !addMemberForm.memberIds.includes(user.id) &&
+                               !existingMemberIds.includes(user.id);
+                      })
+                      .map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {formatDisplayName(user)}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {addMemberForm.memberIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {addMemberForm.memberIds.map((userId) => {
+                      const user = allUsers.find(u => u.id === userId);
+                      return (
+                        <Badge key={userId} variant="secondary" className="text-xs">
+                          {user ? formatDisplayName(user) : userId}
+                          <button
+                            onClick={() => setAddMemberForm(prev => ({
+                              memberIds: prev.memberIds.filter(id => id !== userId)
+                            }))}
+                            className="ml-1 text-red-500 hover:text-red-700"
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
+              <Button 
+                onClick={handleAddMembers}
+                disabled={addMembersMutation.isPending || addMemberForm.memberIds.length === 0}
+              >
+                Add Members
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  // Group selection view
+  return (
+    <div className="h-full">
+      <GroupsList 
+        groups={groups}
+        selectedGroup={selectedGroup}
+        onSelectGroup={setSelectedGroup}
+        onCreateGroup={() => setShowCreateDialog(true)}
+        currentUser={currentUser}
+      />
+
+      {/* Create Group Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Group</DialogTitle>
+            <DialogDescription>
+              Create a private group for focused discussions with selected team members.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Group Name</label>
+              <Input
+                placeholder="e.g., Project Alpha Team"
+                value={groupForm.name}
+                onChange={(e) => setGroupForm(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Description (optional)</label>
+              <Input
+                placeholder="What's this group about?"
+                value={groupForm.description}
+                onChange={(e) => setGroupForm(prev => ({ ...prev, description: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Add Members</label>
+              <Select onValueChange={(userId) => {
+                if (!groupForm.memberIds.includes(userId)) {
+                  setGroupForm(prev => ({ ...prev, memberIds: [...prev.memberIds, userId] }));
+                }
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select team members" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allUsers
+                    .filter(user => user.id !== currentUser?.id && !groupForm.memberIds.includes(user.id))
+                    .map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {formatDisplayName(user)}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {groupForm.memberIds.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {groupForm.memberIds.map((userId) => {
+                    const user = allUsers.find(u => u.id === userId);
+                    return (
+                      <Badge key={userId} variant="secondary" className="text-xs">
+                        {user ? formatDisplayName(user) : userId}
+                        <button
+                          onClick={() => setGroupForm(prev => ({
+                            ...prev,
+                            memberIds: prev.memberIds.filter(id => id !== userId)
+                          }))}
+                          className="ml-1 text-red-500 hover:text-red-700"
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <Button 
+              onClick={handleCreateGroup}
+              disabled={createGroupMutation.isPending || !groupForm.name.trim()}
+            >
+              Create Group
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// Separate component for groups list to avoid duplication
+function GroupsList({ groups, selectedGroup, onSelectGroup, onCreateGroup, currentUser }: {
+  groups: GroupWithMembers[];
+  selectedGroup: GroupWithMembers | null;
+  onSelectGroup: (group: GroupWithMembers | null) => void;
+  onCreateGroup: () => void;
+  currentUser: any;
+}) {
+  const activeGroups = groups.filter(g => g.userRole !== 'archived' && g.userRole !== 'left');
+  const archivedGroups = groups.filter(g => g.userRole === 'archived');
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="p-4 border-b">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Groups</h2>
+          <Button
+            size="sm"
+            onClick={onCreateGroup}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Create Group
+          </Button>
+        </div>
+      </div>
+
+      <Tabs defaultValue="active" className="flex-1 flex flex-col">
+        <TabsList className="mx-4">
+          <TabsTrigger value="active">Active ({activeGroups.length})</TabsTrigger>
+          <TabsTrigger value="archived">Archived ({archivedGroups.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active" className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-2">
+              {activeGroups.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <MessageCircle className="h-8 w-8 mx-auto mb-2" />
+                  <p className="text-sm">No active groups</p>
+                  <p className="text-xs">Create a group to start collaborating</p>
+                </div>
+              ) : (
+                activeGroups.map((group) => (
+                  <Card
+                    key={group.id}
+                    className={`cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                      selectedGroup?.id === group.id ? 'ring-2 ring-primary' : ''
+                    }`}
+                    onClick={() => onSelectGroup(group)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback>
+                              {group.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h4 className="font-medium flex items-center gap-2">
+                              {group.name}
+                              {group.userRole === 'admin' && (
+                                <Crown className="h-3 w-3 text-amber-500" />
+                              )}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              {group.memberCount} members
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="archived" className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-2">
+              {archivedGroups.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Archive className="h-8 w-8 mx-auto mb-2" />
+                  <p className="text-sm">No archived groups</p>
+                </div>
+              ) : (
+                archivedGroups.map((group) => (
+                  <Card
+                    key={group.id}
+                    className="cursor-pointer opacity-60"
+                    onClick={() => onSelectGroup(group)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback>
+                            {group.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-medium">{group.name}</h4>
+                          <p className="text-xs text-muted-foreground">Archived</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

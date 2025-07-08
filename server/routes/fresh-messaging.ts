@@ -69,7 +69,8 @@ export function setupFreshMessagingRoutes(app: Express) {
           userId: messages.userId,
           userEmail: users.email,
           userFirstName: users.firstName,
-          userLastName: users.lastName
+          userLastName: users.lastName,
+          userDisplayName: users.displayName
         })
         .from(messages)
         .leftJoin(users, eq(messages.userId, users.id))
@@ -80,12 +81,29 @@ export function setupFreshMessagingRoutes(app: Express) {
       if (conversationMessages.length > 0) {
         console.log(`💬 Sample message:`, JSON.stringify(conversationMessages[0], null, 2));
       }
-      // Add timestamp to prevent caching issues during development
-      const messagesWithTimestamp = conversationMessages.map(msg => ({
-        ...msg,
+      
+      // Transform messages to include the user object structure that BaseChat expects
+      const messagesWithUser = conversationMessages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        createdAt: msg.createdAt,
+        userId: msg.userId,
+        conversationId: conversationId,
+        // Include user object for better structure
+        user: msg.userId ? {
+          firstName: msg.userFirstName || '',
+          lastName: msg.userLastName || '',
+          email: msg.userEmail || '',
+          displayName: msg.userDisplayName || undefined
+        } : undefined,
+        // Keep legacy fields for compatibility
+        userEmail: msg.userEmail,
+        userFirstName: msg.userFirstName,
+        userLastName: msg.userLastName,
         _debug_timestamp: new Date().toISOString()
       }));
-      res.json(messagesWithTimestamp);
+      
+      res.json(messagesWithUser);
     } catch (error) {
       console.error("❌ Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -122,13 +140,22 @@ export function setupFreshMessagingRoutes(app: Express) {
         .select({
           firstName: users.firstName,
           lastName: users.lastName,
-          email: users.email
+          email: users.email,
+          displayName: users.displayName
         })
         .from(users)
         .where(eq(users.id, userId));
 
       const messageWithUser = {
         ...newMessage,
+        // Include user object for better structure
+        user: user ? {
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          email: user.email || '',
+          displayName: user.displayName || undefined
+        } : undefined,
+        // Keep legacy fields for compatibility
         userEmail: user?.email,
         userFirstName: user?.firstName,
         userLastName: user?.lastName
@@ -145,7 +172,7 @@ export function setupFreshMessagingRoutes(app: Express) {
   app.post("/api/messaging/conversations", isAuthenticated, async (req, res) => {
     try {
       const { name, type = "group" } = req.body;
-      const userId = req.user.id;
+      const userId = req.user!.id;
 
       console.log(`🆕 Creating conversation: ${name} (${type}) by user ${userId}`);
 
@@ -173,6 +200,46 @@ export function setupFreshMessagingRoutes(app: Express) {
     } catch (error) {
       console.error("❌ Error creating conversation:", error);
       res.status(500).json({ message: "Failed to create conversation" });
+    }
+  });
+
+  // Delete a message
+  app.delete("/api/messaging/messages/:id", isAuthenticated, async (req, res) => {
+    try {
+      const messageId = parseInt(req.params.id);
+      const userId = req.user!.id;
+
+      console.log(`🗑️ Deleting message ${messageId} by user ${userId}`);
+
+      // Get the message to check ownership
+      const [message] = await db
+        .select()
+        .from(messages)
+        .where(eq(messages.id, messageId));
+
+      if (!message) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+
+      // Check if user owns the message or has admin privileges
+      const user = req.user as any;
+      const isOwner = message.userId === userId;
+      const isSuperAdmin = user.role === "super_admin";
+      const isAdmin = user.role === "admin";
+      const hasModeratePermission = user.permissions?.includes("moderate_messages");
+
+      if (!isOwner && !isSuperAdmin && !isAdmin && !hasModeratePermission) {
+        return res.status(403).json({ message: "You can only delete your own messages" });
+      }
+
+      // Delete the message
+      await db.delete(messages).where(eq(messages.id, messageId));
+
+      console.log(`🗑️ Message ${messageId} deleted successfully`);
+      res.status(204).send();
+    } catch (error) {
+      console.error("❌ Error deleting message:", error);
+      res.status(500).json({ message: "Failed to delete message" });
     }
   });
 }
