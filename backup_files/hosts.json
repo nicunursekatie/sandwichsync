@@ -1,0 +1,227 @@
+[
+  {
+    "id": 55,
+    "name": "Alpharetta",
+    "address": "",
+    "status": "active",
+    "notes": "",
+    "createdAt": "2025-06-30T16:02:47.875Z",
+    "updatedAt": "2025-06-30T16:02:47.875Z"
+  },
+  {
+    "id": 54,
+    "name": "Athens",
+    "address": "",
+    "status": "active",
+    "notes": "",
+    "createdAt": "2025-06-14T04:31:19.343Z",
+    "updatedAt": "2025-06-14T04:31:19.343Z"
+  },
+  {
+    "id": 37,
+    "name": "Atlanta",
+    "address": null,
+    "status": "inactive",
+    "notes": null,
+    "createdAt": "2025-06-10T02:57:31.184Z",
+    "updatedAt": "2025-06-30T16:18:31.193Z"
+  },
+  {
+    "id": 36,
+    "name": "Buckhead",
+    "address": null,
+    "status": "inactive",
+    "notes": "",
+    "createdAt": "2025-06-08T22:22:52.676Z",
+    "updatedAt": "2025-06-08T22:22:52.676Z"
+  },
+  {
+    "id": 42,
+    "name": "Chamblee/N Brookhaven",
+    "address": null,
+    "status": "inactive",
+    "notes": null,
+    "createdAt": "2025-06-10T02:57:32.426Z",
+    "updatedAt": "2025-06-10T22:27:28.717Z"
+  },
+  {
+    "id": 53,
+    "name": "Collective Learning",
+    "address": null,
+    "status": "active",
+    "notes": "",
+    "createdAt": "2025-06-14T03:19:29.426Z",
+    "updatedAt": "2025-06-14T03:19:29.426Z"
+  },
+  {
+    "id": 46,
+    "name": "College Park",
+    "address": null,
+    "status": "inactive",
+    "notes": null,
+    "createdAt": "2025-06-10T02:57:33.549Z",
+    "updatedAt": "2025-06-10T22:27:34.003Z"
+  },
+  {
+    "id": 48,
+    "name": "Dacula",
+    "address": "",
+    "status": "inactive",
+    "notes": "",
+    "createdAt": "2025-06-10T02:57:33.929Z",
+    "updatedAt": "2025-06-10T02:57:33.929Z"
+  },
+  {
+    "id": 29,
+    "name": "Decatur",
+    "address": null,
+    "status": "inactive",
+    "notes": "",
+    "createdAt": "2025-06-08T15:33:02.723Z",
+    "updatedAt": "2025-06-08T15:33:02.723Z"
+  },
+  {
+    "id": 56,
+    "name": "Dunwoody/PTC",
+    "address": "",
+    "status": "active",
+    "notes": "",
+    "createdAt": "2025-06-30T16:03:12.737Z",
+    "updatedAt": "2025-06-30T16:03:12.737Z"
+  },
+  {
+    "id": 57,
+    "name": "East Cobb/Roswell",
+    "address": "",
+    "status": "active",
+    "notes": "",
+    "createdAt": "2025-06-30T16:03:40.675Z",
+    "updatedAt": "2025-06-30T16:03:40.675Z"
+  },
+  {
+    "id": 60,
+    "name": "Flowery Branch",
+    "address": "",
+    "status": "active",
+    "notes": "",
+    "createdAt": "2025-06-30T16:04:08.911Z",
+    "updatedAt": "2025-06-30T16:04:08.911Z"
+  },
+  {
+    "id": 35,
+    "name": "Glenwood Park",
+    "address": null,
+    "status": "inactive",
+    "notes": "",
+    "createdAt": "2025-06-08T22:22:32.651Z",
+    "updatedAt": "2025-06-08T22:22:32.651Z"
+  },
+  {
+    "id": 62,
+    "name": "Groups",
+    "address": "Multiple Locations",
+    "status": "active",
+    "notes": "Special host for group donations that don't have a specific host location. These are collective donations from various groups.",
+    "createdAt": "2025-07-02T23:47:55.927Z",
+    "updatedAt": "2025-07-02T23:47:55.927Z"
+  },
+  {
+    "id": 59,
+    "name": "Intown/Druid Hills",
+    "address": "",
+    "status": "active",
+    "notes": "",
+    "createdAt": "2025-06-30T16:04:02.304Z",
+    "updatedAt": "2025-06-30T16:04:02.304Z"
+  },
+  {
+    "id": 34,
+    "name": "Lenox/Brookhaven",
+    "address": null,
+    "status": "inactive",
+    "notes": "",
+    "createdAt": "2025-06-08T22:22:17.666Z",
+    "updatedAt": "2025-06-08T22:22:17.666Z"
+  },
+  {
+    "id": 43,
+    "name": "Lilburn",
+    "address": null,
+    "status": "inactive",
+    "notes": null,
+    "createdAt": "2025-06-10T02:57:32.787Z",
+    "updatedAt": "2025-06-30T16:13:28.396Z"
+  },
+  {
+    "id": 33,
+    "name": "New Chastain",
+    "address": null,
+    "status": "inactive",
+    "notes": "",
+    "createdAt": "2025-06-08T22:22:03.131Z",
+    "updatedAt": "2025-06-08T22:22:03.131Z"
+  },
+  {
+    "id": 32,
+    "name": "Oak Grove",
+    "address": null,
+    "status": "inactive",
+    "notes": "",
+    "createdAt": "2025-06-08T22:21:40.909Z",
+    "updatedAt": "2025-06-08T22:21:40.909Z"
+  },
+  {
+    "id": 45,
+    "name": "Peachtree Corners",
+    "address": null,
+    "status": "inactive",
+    "notes": null,
+    "createdAt": "2025-06-10T02:57:33.323Z",
+    "updatedAt": "2025-06-30T16:13:09.476Z"
+  },
+  {
+    "id": 38,
+    "name": "Roswell",
+    "address": null,
+    "status": "inactive",
+    "notes": null,
+    "createdAt": "2025-06-10T02:57:31.512Z",
+    "updatedAt": "2025-06-30T16:13:18.953Z"
+  },
+  {
+    "id": 58,
+    "name": "Sandy Springs",
+    "address": "",
+    "status": "active",
+    "notes": "",
+    "createdAt": "2025-06-30T16:03:51.546Z",
+    "updatedAt": "2025-06-30T16:03:51.546Z"
+  },
+  {
+    "id": 30,
+    "name": "Snellville",
+    "address": null,
+    "status": "inactive",
+    "notes": "",
+    "createdAt": "2025-06-08T22:20:09.209Z",
+    "updatedAt": "2025-06-08T22:20:09.209Z"
+  },
+  {
+    "id": 50,
+    "name": "Suwanee/JC/Duluth",
+    "address": "",
+    "status": "inactive",
+    "notes": "",
+    "createdAt": "2025-06-10T02:57:34.371Z",
+    "updatedAt": "2025-06-30T16:13:03.097Z"
+  },
+  {
+    "id": 31,
+    "name": "Woodstock",
+    "address": null,
+    "status": "inactive",
+    "notes": "",
+    "createdAt": "2025-06-08T22:21:23.082Z",
+    "updatedAt": "2025-06-08T22:21:23.082Z"
+  }
+]

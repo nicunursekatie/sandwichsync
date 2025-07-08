@@ -5887,9 +5887,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   const connectedClients = new Map<string, WebSocket[]>();
 
-<<<<<<< HEAD
-  wss.on('connection', (ws: WebSocket, request) => {
-    console.log('WebSocket client connected');
+  wss.on("connection", (ws: WebSocket, request) => {
+    console.log("WebSocket client connected");
     
     // Add connection state tracking
     let isAlive = true;
@@ -5907,26 +5906,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ws.ping();
     }, 30000); // Ping every 30 seconds
     
-    ws.on('pong', () => {
+    ws.on("pong", () => {
       isAlive = true;
     });
     
-    ws.on('message', (message: string) => {
-      try {
-        const data = JSON.parse(message);
-        
-        if (data.type === 'identify' && data.userId) {
-          userId = data.userId;
-=======
-  wss.on("connection", (ws: WebSocket, request) => {
-    console.log("WebSocket client connected");
-
     ws.on("message", (message: string) => {
       try {
         const data = JSON.parse(message);
-
+        
         if (data.type === "identify" && data.userId) {
->>>>>>> f946c2f (Improve real-time messaging and fix connection issues on the platform)
+          userId = data.userId;
           // Associate WebSocket with user ID
           if (!connectedClients.has(data.userId)) {
             connectedClients.set(data.userId, []);
@@ -5939,14 +5928,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
 
-<<<<<<< HEAD
-    ws.on('close', () => {
+    ws.on("close", () => {
       // Clean up heartbeat
       clearInterval(heartbeatInterval);
       
-=======
-    ws.on("close", () => {
->>>>>>> f946c2f (Improve real-time messaging and fix connection issues on the platform)
       // Remove WebSocket from all user associations
       if (userId) {
         const clients = connectedClients.get(userId);
@@ -5963,16 +5948,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
 
-<<<<<<< HEAD
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
+    ws.on("error", (error) => {
+      console.error("WebSocket error:", error);
       // Clean up on error
       clearInterval(heartbeatInterval);
       ws.terminate();
-=======
-    ws.on("error", (error) => {
-      console.error("WebSocket error:", error);
->>>>>>> f946c2f (Improve real-time messaging and fix connection issues on the platform)
     });
   });
 

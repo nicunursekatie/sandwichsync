@@ -1,5 +1,5 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from "@shared/schema";
 
 if (!process.env.DATABASE_URL) {
@@ -8,6 +8,6 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Use HTTP connection instead of WebSocket for better stability
-const sql = neon(process.env.DATABASE_URL);
+// Use standard PostgreSQL driver for better Railway compatibility
+const sql = postgres(process.env.DATABASE_URL);
 export const db = drizzle(sql, { schema });

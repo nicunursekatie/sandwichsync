@@ -1,0 +1,68 @@
+[
+  {
+    "id": 69,
+    "type": "direct",
+    "name": "user_1751071509329_mrkw2z95z_user_1751493923615_nbcyq3am7",
+    "createdAt": "2025-07-07T02:18:04.666Z"
+  },
+  {
+    "id": 10,
+    "type": "group",
+    "name": "Giving Circle",
+    "createdAt": "2025-07-06T17:04:32.715Z"
+  },
+  {
+    "id": 7,
+    "type": "direct",
+    "name": null,
+    "createdAt": "2025-07-06T17:04:31.961Z"
+  },
+  {
+    "id": 8,
+    "type": "direct",
+    "name": null,
+    "createdAt": "2025-07-06T17:04:31.961Z"
+  },
+  {
+    "id": 9,
+    "type": "direct",
+    "name": null,
+    "createdAt": "2025-07-06T17:04:31.961Z"
+  },
+  {
+    "id": 1,
+    "type": "channel",
+    "name": "General Chat",
+    "createdAt": "2025-07-06T17:04:29.074Z"
+  },
+  {
+    "id": 5,
+    "type": "channel",
+    "name": "Driver Chat",
+    "createdAt": "2025-07-06T17:04:29.074Z"
+  },
+  {
+    "id": 4,
+    "type": "channel",
+    "name": "Host Chat",
+    "createdAt": "2025-07-06T17:04:29.074Z"
+  },
+  {
+    "id": 2,
+    "type": "channel",
+    "name": "Core Team",
+    "createdAt": "2025-07-06T17:04:29.074Z"
+  },
+  {
+    "id": 6,
+    "type": "channel",
+    "name": "Recipient Chat",
+    "createdAt": "2025-07-06T17:04:29.074Z"
+  },
+  {
+    "id": 3,
+    "type": "channel",
+    "name": "Marketing Committee",
+    "createdAt": "2025-07-06T17:04:29.074Z"
+  }
+]

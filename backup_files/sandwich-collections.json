@@ -1,0 +1,412 @@
+{
+  "collections": [
+    {
+      "id": 3154,
+      "collectionDate": "2025-07-07",
+      "hostName": "Alpharetta",
+      "individualSandwiches": 200,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-07T03:30:14.634Z"
+    },
+    {
+      "id": 3143,
+      "collectionDate": "2025-06-26",
+      "hostName": "Groups",
+      "individualSandwiches": 3260,
+      "groupCollections": "[{\"name\":\"Groups\",\"count\":3260}]",
+      "submittedAt": "2025-07-03T02:35:34.261Z"
+    },
+    {
+      "id": 3138,
+      "collectionDate": "2025-06-26",
+      "hostName": "Intown/Druid Hills",
+      "individualSandwiches": 1000,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-03T02:30:56.303Z"
+    },
+    {
+      "id": 3002,
+      "collectionDate": "2025-06-26",
+      "hostName": "Alpharetta",
+      "individualSandwiches": 2466,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-27T21:02:30.938Z"
+    },
+    {
+      "id": 3005,
+      "collectionDate": "2025-06-26",
+      "hostName": "Sandy Springs",
+      "individualSandwiches": 667,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-27T21:06:51.844Z"
+    },
+    {
+      "id": 3139,
+      "collectionDate": "2025-06-26",
+      "hostName": "Flowery Branch",
+      "individualSandwiches": 200,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-03T02:31:07.839Z"
+    },
+    {
+      "id": 3004,
+      "collectionDate": "2025-06-26",
+      "hostName": "East Cobb/Roswell",
+      "individualSandwiches": 1960,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-27T21:03:52.328Z"
+    },
+    {
+      "id": 3137,
+      "collectionDate": "2025-06-26",
+      "hostName": "Dunwoody/PTC",
+      "individualSandwiches": 2000,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-03T02:29:50.329Z"
+    },
+    {
+      "id": 3144,
+      "collectionDate": "2025-06-19",
+      "hostName": "Groups - Unassigned",
+      "individualSandwiches": 0,
+      "groupCollections": "[{\"name\":\"Groups\",\"count\":2950}]",
+      "submittedAt": "2025-07-03T02:36:33.204Z"
+    },
+    {
+      "id": 3145,
+      "collectionDate": "2025-06-19",
+      "hostName": "Groups",
+      "individualSandwiches": 2950,
+      "groupCollections": "[{\"name\":\"Groups\",\"count\":2950}]",
+      "submittedAt": "2025-07-03T02:37:14.763Z"
+    },
+    {
+      "id": 2996,
+      "collectionDate": "2025-06-19",
+      "hostName": "Alpharetta",
+      "individualSandwiches": 2442,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-27T21:00:03.771Z"
+    },
+    {
+      "id": 2999,
+      "collectionDate": "2025-06-19",
+      "hostName": "Sandy Springs",
+      "individualSandwiches": 856,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-27T21:00:59.136Z"
+    },
+    {
+      "id": 3001,
+      "collectionDate": "2025-06-19",
+      "hostName": "Collective Learning",
+      "individualSandwiches": 300,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-27T21:02:09.582Z"
+    },
+    {
+      "id": 2998,
+      "collectionDate": "2025-06-19",
+      "hostName": "East Cobb/Roswell",
+      "individualSandwiches": 2774,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-27T21:00:44.282Z"
+    },
+    {
+      "id": 3000,
+      "collectionDate": "2025-06-19",
+      "hostName": "Intown/Druid Hills",
+      "individualSandwiches": 1312,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-27T21:01:33.980Z"
+    },
+    {
+      "id": 2997,
+      "collectionDate": "2025-06-19",
+      "hostName": "Dunwoody/PTC",
+      "individualSandwiches": 1889,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-27T21:00:28.518Z"
+    },
+    {
+      "id": 2828,
+      "collectionDate": "2025-06-11",
+      "hostName": "Groups",
+      "individualSandwiches": 4259,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-14T03:44:51.552Z"
+    },
+    {
+      "id": 2821,
+      "collectionDate": "2025-06-11",
+      "hostName": "Alpharetta",
+      "individualSandwiches": 2964,
+      "groupCollections": "",
+      "submittedAt": "2025-06-14T03:20:28.986Z"
+    },
+    {
+      "id": 2825,
+      "collectionDate": "2025-06-11",
+      "hostName": "Flowery Branch",
+      "individualSandwiches": 258,
+      "groupCollections": "",
+      "submittedAt": "2025-06-14T03:21:57.321Z"
+    },
+    {
+      "id": 2847,
+      "collectionDate": "2025-06-11",
+      "hostName": "Collective Learning",
+      "individualSandwiches": 300,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-14T04:28:11.588Z"
+    },
+    {
+      "id": 2824,
+      "collectionDate": "2025-06-11",
+      "hostName": "Sandy Springs",
+      "individualSandwiches": 203,
+      "groupCollections": "",
+      "submittedAt": "2025-06-14T03:21:40.684Z"
+    },
+    {
+      "id": 2823,
+      "collectionDate": "2025-06-11",
+      "hostName": "East Cobb/Roswell",
+      "individualSandwiches": 1186,
+      "groupCollections": "",
+      "submittedAt": "2025-06-14T03:21:24.109Z"
+    },
+    {
+      "id": 2822,
+      "collectionDate": "2025-06-11",
+      "hostName": "Dunwoody/PTC",
+      "individualSandwiches": 1251,
+      "groupCollections": "",
+      "submittedAt": "2025-06-14T03:20:54.425Z"
+    },
+    {
+      "id": 2818,
+      "collectionDate": "2025-06-04",
+      "hostName": "Sandy Springs",
+      "individualSandwiches": 134,
+      "groupCollections": "",
+      "submittedAt": "2025-06-14T03:14:41.845Z"
+    },
+    {
+      "id": 2819,
+      "collectionDate": "2025-06-04",
+      "hostName": "Flowery Branch",
+      "individualSandwiches": 689,
+      "groupCollections": "",
+      "submittedAt": "2025-06-14T03:15:05.292Z"
+    },
+    {
+      "id": 2817,
+      "collectionDate": "2025-06-04",
+      "hostName": "East Cobb/Roswell",
+      "individualSandwiches": 2059,
+      "groupCollections": "",
+      "submittedAt": "2025-06-14T03:14:21.017Z"
+    },
+    {
+      "id": 2820,
+      "collectionDate": "2025-06-04",
+      "hostName": "Collective Learning",
+      "individualSandwiches": 250,
+      "groupCollections": "",
+      "submittedAt": "2025-06-14T03:20:04.941Z"
+    },
+    {
+      "id": 3027,
+      "collectionDate": "2025-06-04",
+      "hostName": "Groups",
+      "individualSandwiches": 550,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-02T23:47:58.429Z"
+    },
+    {
+      "id": 3136,
+      "collectionDate": "2025-06-04",
+      "hostName": "Intown/Druid Hills",
+      "individualSandwiches": 1221,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-03T02:12:17.340Z"
+    },
+    {
+      "id": 2815,
+      "collectionDate": "2025-06-04",
+      "hostName": "Alpharetta",
+      "individualSandwiches": 2767,
+      "groupCollections": "",
+      "submittedAt": "2025-06-14T03:13:17.621Z"
+    },
+    {
+      "id": 2816,
+      "collectionDate": "2025-06-04",
+      "hostName": "Dunwoody/PTC",
+      "individualSandwiches": 1188,
+      "groupCollections": "",
+      "submittedAt": "2025-06-14T03:14:01.844Z"
+    },
+    {
+      "id": 3133,
+      "collectionDate": "2025-05-29",
+      "hostName": "Sandy Springs",
+      "individualSandwiches": 529,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-03T02:12:17.340Z"
+    },
+    {
+      "id": 3135,
+      "collectionDate": "2025-05-29",
+      "hostName": "Flowery Branch",
+      "individualSandwiches": 275,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-03T02:12:17.340Z"
+    },
+    {
+      "id": 3026,
+      "collectionDate": "2025-05-29",
+      "hostName": "Groups",
+      "individualSandwiches": 100,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-02T23:47:58.289Z"
+    },
+    {
+      "id": 3130,
+      "collectionDate": "2025-05-29",
+      "hostName": "Alpharetta",
+      "individualSandwiches": 768,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-03T02:12:17.340Z"
+    },
+    {
+      "id": 3132,
+      "collectionDate": "2025-05-29",
+      "hostName": "East Cobb/Roswell",
+      "individualSandwiches": 901,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-03T02:12:17.340Z"
+    },
+    {
+      "id": 2845,
+      "collectionDate": "2025-05-29",
+      "hostName": "Collective Learning",
+      "individualSandwiches": 250,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-14T04:28:11.520Z"
+    },
+    {
+      "id": 3131,
+      "collectionDate": "2025-05-29",
+      "hostName": "Dunwoody/PTC",
+      "individualSandwiches": 1066,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-03T02:12:17.340Z"
+    },
+    {
+      "id": 3134,
+      "collectionDate": "2025-05-29",
+      "hostName": "Intown/Druid Hills",
+      "individualSandwiches": 832,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-03T02:12:17.340Z"
+    },
+    {
+      "id": 2810,
+      "collectionDate": "2025-05-28",
+      "hostName": "Alpharetta",
+      "individualSandwiches": 1575,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-08T17:06:09.667Z"
+    },
+    {
+      "id": 2811,
+      "collectionDate": "2025-05-28",
+      "hostName": "Intown/Druid Hills",
+      "individualSandwiches": 832,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-08T17:06:09.743Z"
+    },
+    {
+      "id": 2806,
+      "collectionDate": "2025-05-21",
+      "hostName": "Sandy Springs",
+      "individualSandwiches": 644,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-08T17:06:09.359Z"
+    },
+    {
+      "id": 2809,
+      "collectionDate": "2025-05-21",
+      "hostName": "Groups - Main",
+      "individualSandwiches": 0,
+      "groupCollections": "[{\"groupName\":\"Unnamed Groups\",\"sandwichCount\":4810}]",
+      "submittedAt": "2025-06-08T17:06:09.590Z"
+    },
+    {
+      "id": 2803,
+      "collectionDate": "2025-05-21",
+      "hostName": "Alpharetta",
+      "individualSandwiches": 950,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-08T17:06:09.125Z"
+    },
+    {
+      "id": 2844,
+      "collectionDate": "2025-05-21",
+      "hostName": "Collective Learning",
+      "individualSandwiches": 50,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-14T04:28:11.485Z"
+    },
+    {
+      "id": 3025,
+      "collectionDate": "2025-05-21",
+      "hostName": "Groups",
+      "individualSandwiches": 4610,
+      "groupCollections": "[]",
+      "submittedAt": "2025-07-02T23:47:58.147Z"
+    },
+    {
+      "id": 2807,
+      "collectionDate": "2025-05-21",
+      "hostName": "Intown/Druid Hills",
+      "individualSandwiches": 516,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-08T17:06:09.436Z"
+    },
+    {
+      "id": 2805,
+      "collectionDate": "2025-05-21",
+      "hostName": "East Cobb/Roswell",
+      "individualSandwiches": 1403,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-08T17:06:09.283Z"
+    },
+    {
+      "id": 2804,
+      "collectionDate": "2025-05-21",
+      "hostName": "Dunwoody/PTC",
+      "individualSandwiches": 1783,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-08T17:06:09.204Z"
+    },
+    {
+      "id": 2808,
+      "collectionDate": "2025-05-21",
+      "hostName": "Flowery Branch",
+      "individualSandwiches": 285,
+      "groupCollections": "[]",
+      "submittedAt": "2025-06-08T17:06:09.513Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 1801,
+    "totalPages": 37,
+    "hasNext": true,
+    "hasPrev": false
+  }
+}
