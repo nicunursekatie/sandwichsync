@@ -40,6 +40,68 @@ export class CSVCollectionMigrator {
     this.csvFilePath = csvFilePath;
   }
 
+  // Manual CSV parsing function to handle complex JSON content within CSV fields
+  private parseCSVManually(csvContent: string): CSVCollection[] {
+    const lines = csvContent.split("\n");
+    if (lines.length === 0) return [];
+
+    // Get headers from first line
+    const headerLine = lines[0];
+    const headers = headerLine.split(",").map(h => h.replace(/^"|"$/g, "").trim());
+
+    const records: CSVCollection[] = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      // Split by comma but be careful with quoted content
+      const fields = [];
+      let currentField = '';
+      let inQuotes = false;
+      
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        
+        if (char === '"') {
+          // Handle nested quotes - if we have JSON content with quotes
+          if (inQuotes && line[j + 1] === '"') {
+            currentField += '"';
+            j++; // Skip the next quote
+          } else {
+            inQuotes = !inQuotes;
+            if (!inQuotes || j === 0 || line[j - 1] === ',') {
+              // Don't add the quote character to the field content
+            } else {
+              currentField += char;
+            }
+          }
+        } else if (char === ',' && !inQuotes) {
+          fields.push(currentField.trim());
+          currentField = '';
+        } else {
+          currentField += char;
+        }
+      }
+      
+      // Add the last field
+      if (currentField) {
+        fields.push(currentField.trim());
+      }
+
+      // Create record object
+      if (fields.length >= headers.length) {
+        const record: CSVCollection = {};
+        for (let k = 0; k < headers.length; k++) {
+          record[headers[k]] = fields[k] || '';
+        }
+        records.push(record);
+      }
+    }
+
+    return records;
+  }
+
   private parseCSVRow(row: CSVCollection): ProcessedCollection | null {
     try {
       // Common CSV column names to look for (case-insensitive)
@@ -157,13 +219,25 @@ export class CSVCollectionMigrator {
     console.log(`🥪 Starting CSV sandwich collections migration from ${this.csvFilePath}`);
     
     try {
-      // Read and parse CSV file
+      // Read and parse CSV file with enhanced error handling
       const csvContent = fs.readFileSync(this.csvFilePath, 'utf8');
-      const records: CSVCollection[] = parse(csvContent, {
-        columns: true, // Use first row as headers
-        skip_empty_lines: true,
-        trim: true
-      });
+      let records: CSVCollection[] = [];
+      
+      try {
+        records = parse(csvContent, {
+          columns: true, // Use first row as headers
+          skip_empty_lines: true,
+          trim: true,
+          delimiter: ",",
+          quote: '"',
+          escape: '"',
+          relax_quotes: true,
+          relax_column_count: true,
+        });
+      } catch (parseError) {
+        console.log('⚠️  Standard parsing failed, using manual parsing...');
+        records = this.parseCSVManually(csvContent);
+      }
 
       this.stats.total = records.length;
       console.log(`📊 Found ${this.stats.total} records in CSV file`);
@@ -246,48 +320,58 @@ export class CSVCollectionMigrator {
 
     try {
       const csvContent = fs.readFileSync(this.csvFilePath, 'utf8');
-      const records: CSVCollection[] = parse(csvContent, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true
-      });
-
-      console.log(`\\n📊 Found ${records.length} records in CSV file`);
-      console.log(`📋 CSV columns: ${Object.keys(records[0]).join(', ')}`);
-
-      // Show first few rows
-      console.log('\\n📋 First 3 rows:');
-      records.slice(0, 3).forEach((row, i) => {
-        console.log(`\\nRow ${i + 1}:`);
-        Object.entries(row).forEach(([key, value]) => {
-          console.log(`  ${key}: ${value}`);
+      let records: CSVCollection[] = [];
+      
+      try {
+        records = parse(csvContent, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+          delimiter: ",",
+          quote: '"',
+          escape: '"',
+          relax_quotes: true,
+          relax_column_count: true,
         });
-      });
-
-      // Try to process a few rows to show what would be created
-      console.log('\\n🔍 Processing preview:');
-      let processedCount = 0;
-      let errorCount = 0;
-
-      for (let i = 0; i < Math.min(5, records.length); i++) {
-        const processed = this.parseCSVRow(records[i]);
-        if (processed) {
-          console.log(`✅ Row ${i + 1}: ${processed.hostName} - ${processed.individualSandwiches} sandwiches on ${processed.collectionDate}`);
-          processedCount++;
-        } else {
-          console.log(`❌ Row ${i + 1}: Could not process`);
-          errorCount++;
-        }
+      } catch (parseError) {
+        console.log('⚠️  Standard parsing failed, using manual parsing...');
+        records = this.parseCSVManually(csvContent);
       }
 
-      console.log(`\\n📊 Preview summary:`);
-      console.log(`Total rows: ${records.length}`);
-      console.log(`Sample processed: ${processedCount}/${Math.min(5, records.length)}`);
-      console.log(`Sample errors: ${errorCount}/${Math.min(5, records.length)}`);
+      console.log(`\\n📊 Found ${records.length} records in CSV file`);
+      if (records.length > 0) {
+        console.log(`📋 CSV columns: ${Object.keys(records[0]).join(', ')}`);
 
-      console.log('\\n💡 To run the migration:');
-      console.log(`  npm run migrate-csv-collections ${this.csvFilePath}`);
-      console.log(`  npm run migrate-csv-collections ${this.csvFilePath} -- --overwrite`);
+        // Show first few rows
+        console.log('\\n📋 First 3 rows:');
+        records.slice(0, 3).forEach((row, i) => {
+          console.log(`\\nRow ${i + 1}:`);
+          Object.entries(row).forEach(([key, value]) => {
+            console.log(`  ${key}: ${value}`);
+          });
+        });
+
+        // Try to process a few rows to show what would be created
+        console.log('\\n🔍 Processing preview:');
+        let processedCount = 0;
+        let errorCount = 0;
+
+        for (let i = 0; i < Math.min(5, records.length); i++) {
+          const processed = this.parseCSVRow(records[i]);
+          if (processed) {
+            console.log(`✅ Row ${i + 1}: ${processed.hostName} - ${processed.individualSandwiches} sandwiches on ${processed.collectionDate}`);
+            processedCount++;
+          } else {
+            console.log(`❌ Row ${i + 1}: Could not process`);
+            errorCount++;
+          }
+        }
+
+        console.log(`\\n📊 Preview summary:`);
+        console.log(`Total rows: ${records.length}`);
+        console.log(`Sample processed: ${processedCount}/${Math.min(5, records.length)}`);
+        console.log(`Sample errors: ${errorCount}/${Math.min(5, records.length)}`);
+      }
 
     } catch (error) {
       console.error('❌ Preview failed:', error);

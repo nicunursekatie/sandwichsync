@@ -50,8 +50,8 @@ async function cleanupUserIds() {
     console.log('\n🔄 Updating user IDs...');
 
     // Update each user with new clean ID
-    for (const oldId of userMappings.keys()) {
-      const newId = userMappings.get(oldId)!;
+    const userEntries = Array.from(userMappings.entries());
+    for (const [oldId, newId] of userEntries) {
       try {
         // Update the user record
         await db
@@ -68,8 +68,7 @@ async function cleanupUserIds() {
     console.log('\n🔄 Updating task completions...');
 
     // Update task completions to use new user IDs
-    for (const oldId of userMappings.keys()) {
-      const newId = userMappings.get(oldId)!;
+    for (const [oldId, newId] of userEntries) {
       try {
         await db
           .update(taskCompletions)
