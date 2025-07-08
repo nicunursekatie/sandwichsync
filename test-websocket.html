@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    
+    <script>
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${protocol}//${window.location.hostname}:5000/notifications`;
+        
+        console.log('Attempting to connect to:', wsUrl);
+        document.getElementById('status').textContent = `Connecting to ${wsUrl}...`;
+        
+        try {
+            const socket = new WebSocket(wsUrl);
+            
+            socket.onopen = () => {
+                console.log('WebSocket connected successfully!');
+                document.getElementById('status').textContent = 'Connected!';
+                document.getElementById('status').style.color = 'green';
+                
+                // Send identification
+                socket.send(JSON.stringify({
+                    type: 'identify',
+                    userId: 'test-user-123'
+                }));
+            };
+            
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                document.getElementById('status').textContent = 'Connection error';
+                document.getElementById('status').style.color = 'red';
+            };
+            
+            socket.onmessage = (event) => {
+                console.log('Received:', event.data);
+                const msgDiv = document.createElement('div');
+                msgDiv.textContent = `Received: ${event.data}`;
+                document.getElementById('messages').appendChild(msgDiv);
+            };
+            
+            socket.onclose = (event) => {
+                console.log('WebSocket closed:', event.code, event.reason);
+                document.getElementById('status').textContent = `Closed: ${event.code} ${event.reason}`;
+                document.getElementById('status').style.color = 'orange';
+            };
+        } catch (error) {
+            console.error('Failed to create WebSocket:', error);
+            document.getElementById('status').textContent = `Error: ${error.message}`;
+            document.getElementById('status').style.color = 'red';
+        }
+    </script>
+</body>
+</html>
